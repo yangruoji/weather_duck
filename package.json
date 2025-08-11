@@ -1,0 +1,23 @@
+{
+  "name": "weather-duck",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host",
+    "build": "vue-tsc --noEmit && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "axios": "^1.7.2",
+    "dayjs": "^1.11.11",
+    "tdesign-vue-next": "^1.15.2",
+    "vue": "^3.4.27"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^5.0.4",
+    "typescript": "^5.5.3",
+    "vite": "^5.3.1",
+    "vue-tsc": "^2.0.22"
+  }
+}
