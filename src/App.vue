@@ -2,7 +2,10 @@
   <div class="app">
     <div class="app-header no-print">
       <div class="header-left">
-        <h1>天气小鸭 · 暑假天气日历</h1>
+        <h1>
+          天气小鸭 · 暑假天气日历
+          <span v-if="headerProvince || headerCity" class="title-location">（{{ headerProvince }}<template v-if="headerProvince && headerCity"> · </template>{{ headerCity }}）</span>
+        </h1>
       </div>
       <div class="header-right">
         <div class="toolbar">
@@ -22,7 +25,14 @@
             @change="onCitySelected"
             :filterable="false"
           />
-          <t-button class="control" variant="outline" @click="useMyLocation">使用定位</t-button>
+          <t-button 
+            class="control" 
+            variant="outline" 
+            @click="useMyLocation"
+            :loading="locating"
+          >
+            {{ locating ? '定位中...' : '使用定位' }}
+          </t-button>
           <t-date-range-picker
             class="control control--full"
             v-model:value="dateRangeValue"
@@ -43,31 +53,38 @@
         <div class="cards-grid">
           <WeatherCard v-for="item in weatherList" :key="item.date" :weather="item" />
         </div>
+        <div class="chart-wrapper no-print">
+          <WeatherLineChart :data="weatherList" :height="360" />
+        </div>
       </t-loading>
     </div>
 
     <div class="app-footer no-print">
       <div class="footer">
         数据来源：Open-Meteo 免费API · 时区：Asia/Shanghai · 位置：{{ displayAddress }}（{{ latitude.toFixed(4) }}, {{ longitude.toFixed(4) }}）
+        <span v-if="isDefaultLocation" class="location-note">（默认位置）</span>
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { DateUtils } from './utils/dateUtils'
 import WeatherCard from './components/WeatherCard.vue'
+import WeatherLineChart from './components/WeatherLineChart.vue'
 import { WeatherApiService } from './services/weatherApi'
 import type { WeatherData } from './types/weather'
 import { GeocodingService } from './services/geocoding'
 
 const loading = ref(false)
+const locating = ref(false)
 const errorMessage = ref('')
 
-const latitude = ref(39.9042)
-const longitude = ref(116.4074)
+const latitude = ref(22.5429)
+const longitude = ref(114.0596)
 const displayAddress = ref('定位中...')
+const isDefaultLocation = ref(true)
 
 const cityKeyword = ref('')
 const cityOptions = ref<Array<{ label: string; value: string; lat: number; lon: number }>>([])
@@ -79,6 +96,33 @@ const endDate = ref(defaultRange.endDate)
 const dateRangeValue = ref<[string, string]>([startDate.value, endDate.value])
 
 const weatherList = ref<WeatherData[]>([])
+
+// 计算标题中显示的城市和省份
+const headerParts = computed(() => {
+  const raw = displayAddress.value || ''
+  if (!raw || raw === '未知位置') return [] as string[]
+  return raw.split(' · ').filter(Boolean)
+})
+const headerCity = computed(() => headerParts.value[0] || '')
+const headerProvince = computed(() => headerParts.value[1] || '')
+
+// 将"当前定位"设置为城市选择的默认值
+function setSelectedToCurrentLocation(label?: string) {
+  const value = `${latitude.value},${longitude.value}`
+  const option = {
+    label: label || displayAddress.value || '当前定位',
+    value,
+    lat: latitude.value,
+    lon: longitude.value
+  }
+  const idx = cityOptions.value.findIndex((o) => o.value === value)
+  if (idx >= 0) {
+    cityOptions.value.splice(idx, 1, option)
+  } else {
+    cityOptions.value.unshift(option)
+  }
+  selectedCity.value = value
+}
 
 function onDateRangeChange(val: [Date, Date] | [string, string]) {
   const [start, end] = val as [Date | string, Date | string]
@@ -107,19 +151,38 @@ async function onCitySelected(val: string) {
   longitude.value = target.lon
   selectedCity.value = val
   displayAddress.value = target.label
+  isDefaultLocation.value = false
   await fetchAll()
 }
 
 async function useMyLocation() {
+  locating.value = true
+  errorMessage.value = ''
+  
   try {
     const loc = await WeatherApiService.getCurrentLocation()
     latitude.value = loc.latitude
     longitude.value = loc.longitude
-    selectedCity.value = undefined
+    isDefaultLocation.value = false
+    
     displayAddress.value = await GeocodingService.reverseGeocode(latitude.value, longitude.value)
+    setSelectedToCurrentLocation(displayAddress.value)
+    
     await fetchAll()
-  } catch {
-    errorMessage.value = '定位失败，请检查浏览器定位权限。'
+  } catch (e: any) {
+    console.error('定位失败:', e)
+    errorMessage.value = e?.message || '定位失败，请检查浏览器定位权限或网络连接'
+    
+    // 定位失败时使用默认坐标（广东深圳）
+    latitude.value = 22.5429
+    longitude.value = 114.0596
+    isDefaultLocation.value = true
+    displayAddress.value = '深圳市 · 广东省 · 中国'
+    setSelectedToCurrentLocation('深圳市 · 广东省 · 中国（默认）')
+    
+    await fetchAll()
+  } finally {
+    locating.value = false
   }
 }
 
@@ -179,12 +242,26 @@ onMounted(async () => {
     const loc = await WeatherApiService.getCurrentLocation()
     latitude.value = loc.latitude
     longitude.value = loc.longitude
-  } catch {}
+    isDefaultLocation.value = false
+  } catch (e) {
+    console.warn('初始定位失败，使用默认坐标:', e)
+    // 使用默认坐标（广东深圳）
+    latitude.value = 22.5429
+    longitude.value = 114.0596
+    isDefaultLocation.value = true
+  }
+  
   try {
     displayAddress.value = await GeocodingService.reverseGeocode(latitude.value, longitude.value)
   } catch {
-    displayAddress.value = '未知位置'
+    displayAddress.value = isDefaultLocation.value ? '深圳市 · 广东省 · 中国' : '未知位置'
   }
+  
+  // 若未选择城市，则默认使用当前定位
+  if (!selectedCity.value) {
+    setSelectedToCurrentLocation(displayAddress.value)
+  }
+  
   await fetchAll()
 })
 </script>
@@ -205,11 +282,20 @@ onMounted(async () => {
   font-size: 18px;
   margin: 0;
 }
+.title-location {
+  font-size: 14px;
+  color: #666;
+  margin-left: 8px;
+  font-weight: 400;
+}
 .cards-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 16px;
   padding: 16px;
+}
+.chart-wrapper {
+  padding: 16px 16px 0;
 }
 .app-footer .footer {
   padding: 12px 16px;
@@ -217,7 +303,10 @@ onMounted(async () => {
   font-size: 12px;
   text-align: center;
 }
-
+.location-note {
+  color: #999;
+  font-style: italic;
+}
 /* 顶部工具栏自适应 */
 .toolbar {
   display: grid;

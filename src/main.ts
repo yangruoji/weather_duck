@@ -6,7 +6,7 @@ import App from './App.vue'
 const app = createApp(App)
 
 // 忽略已知的 TDesign 内部 size 额外属性告警（TSelectPanel/TSelectInput）
-app.config.warnHandler = (msg, instance, trace) => {
+app.config.warnHandler = (msg, _instance, trace) => {
   const text = typeof msg === 'string' ? msg : String(msg)
   const stack = typeof trace === 'string' ? trace : ''
   const isExtraneousSize =

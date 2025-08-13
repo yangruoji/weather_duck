@@ -29,8 +29,8 @@ const weatherCodes: Record<number, { description: string; icon: string }> = {
 export class WeatherApiService {
   // 获取历史天气数据
   static async getHistoricalWeather(
-    latitude: number = 39.9042, // 默认北京坐标
-    longitude: number = 116.4074,
+    latitude: number = 22.5429, // 默认广东深圳坐标
+    longitude: number = 114.0596,
     startDate: string,
     endDate: string
   ): Promise<WeatherData[]> {
@@ -93,8 +93,8 @@ export class WeatherApiService {
 
   // 获取实时天气（用于今天的补充信息）
   static async getCurrentWeather(
-    latitude: number = 39.9042,
-    longitude: number = 116.4074
+    latitude: number = 22.5429,
+    longitude: number = 114.0596
   ): Promise<Partial<WeatherData> | null> {
     try {
       const response = await axios.get('https://api.open-meteo.com/v1/forecast', {
@@ -135,26 +135,52 @@ export class WeatherApiService {
     return '北风'
   }
 
-  // 获取当前位置（简化版，实际项目中可以使用浏览器定位API）
+  // 获取当前位置（增强版，带超时和错误处理）
   static async getCurrentLocation(): Promise<{ latitude: number; longitude: number }> {
-    return new Promise((resolve) => {
-      if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(
-          (position) => {
-            resolve({
-              latitude: position.coords.latitude,
-              longitude: position.coords.longitude
-            })
-          },
-          () => {
-            // 定位失败时使用默认坐标（北京）
-            resolve({ latitude: 39.9042, longitude: 116.4074 })
-          }
-        )
-      } else {
-        // 不支持定位时使用默认坐标
-        resolve({ latitude: 39.9042, longitude: 116.4074 })
+    return new Promise((resolve, reject) => {
+      if (!navigator.geolocation) {
+        reject(new Error('浏览器不支持定位'))
+        return
       }
+
+      const options = {
+        enableHighAccuracy: false, // 降低精度要求，提高成功率
+        timeout: 10000, // 10秒超时
+        maximumAge: 300000 // 5分钟内的缓存位置
+      }
+
+      const success = (position: GeolocationPosition) => {
+        const { latitude, longitude, accuracy } = position.coords
+        console.log(`定位成功: ${latitude}, ${longitude}, 精度: ${accuracy}米`)
+        
+        // 检查坐标合理性（中国大致范围）
+        if (latitude < 3 || latitude > 54 || longitude < 73 || longitude > 135) {
+          console.warn('定位坐标超出中国范围，可能定位错误')
+          reject(new Error('定位坐标异常，可能不在中国境内'))
+          return
+        }
+        
+        resolve({ latitude, longitude })
+      }
+
+      const error = (err: GeolocationPositionError) => {
+        let message = '定位失败'
+        switch (err.code) {
+          case err.PERMISSION_DENIED:
+            message = '定位权限被拒绝，请在浏览器设置中允许定位'
+            break
+          case err.POSITION_UNAVAILABLE:
+            message = '定位信息不可用，请检查网络连接'
+            break
+          case err.TIMEOUT:
+            message = '定位超时，请重试'
+            break
+        }
+        console.error('定位错误:', message, err)
+        reject(new Error(message))
+      }
+
+      navigator.geolocation.getCurrentPosition(success, error, options)
     })
   }
 }
