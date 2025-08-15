@@ -1,5 +1,5 @@
 <template>
-  <t-card class="weather-card" :class="{ 'today': isToday }">
+  <t-card class="weather-card" :class="{ 'today': isToday }" @click="handleCardClick">
     <div class="weather-header">
       <div class="date-info">
         <div class="date">{{ formatDate(weather.date) }}</div>
@@ -40,19 +40,29 @@
         <span class="value">{{ weather.cloudCover }}%</span>
       </div>
     </div>
+    
+    <div class="diary-indicator" v-if="hasDiary">
+      <t-icon name="edit" size="16" />
+    </div>
   </t-card>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref, onMounted } from 'vue'
 import { WeatherData } from '../types/weather'
 import { DateUtils } from '../utils/dateUtils'
+import { diaryDb } from '../services/diaryDb'
 
 interface Props {
   weather: WeatherData
 }
 
+interface Emits {
+  (e: 'click', weather: WeatherData): void
+}
+
 const props = defineProps<Props>()
+const emit = defineEmits<Emits>()
 
 const formatDate = DateUtils.formatDate
 const getWeekday = DateUtils.getWeekday
@@ -61,6 +71,21 @@ const isToday = computed(() => {
   const today = new Date().toISOString().split('T')[0]
   return props.weather.date === today
 })
+
+const hasDiary = ref(false)
+
+onMounted(async () => {
+  try {
+    hasDiary.value = await diaryDb.hasDiary(props.weather.date)
+  } catch (e) {
+    console.warn('检查日记状态失败:', e)
+    hasDiary.value = false
+  }
+})
+
+function handleCardClick() {
+  emit('click', props.weather)
+}
 </script>
 
 <style scoped>
@@ -68,6 +93,8 @@ const isToday = computed(() => {
   min-height: 200px;
   transition: all 0.3s ease;
   border-radius: 12px;
+  cursor: pointer;
+  position: relative;
 }
 
 .weather-card:hover {
@@ -167,6 +194,20 @@ const isToday = computed(() => {
 .value {
   color: #333;
   font-weight: 500;
+}
+
+.diary-indicator {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: rgba(0, 82, 217, 0.1);
+  color: #0052d9;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 @media (max-width: 768px) {

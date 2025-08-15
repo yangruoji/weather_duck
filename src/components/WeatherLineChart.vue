@@ -6,7 +6,7 @@
 <script setup lang="ts">
 import { onMounted, onBeforeUnmount, ref, watch, computed } from 'vue'
 import * as echarts from 'echarts'
-import type { ECharts as TECharts, EChartsOption, LineSeriesOption } from 'echarts'
+import type { ECharts as TECharts, EChartsOption, LineSeriesOption, BarSeriesOption } from 'echarts'
 import type { WeatherData } from '../types/weather'
 
 interface Props {
@@ -31,18 +31,39 @@ function getOption(list: WeatherData[]): EChartsOption {
   const minArr = list.map((d) => d.temperature.min)
   const curArr = list.map((d) => d.temperature.current)
   const precipArr = list.map((d) => d.precipitation)
+  const icons = list.map((d) => d.icon)
 
-  const series: LineSeriesOption[] = [
+  const series: (LineSeriesOption | BarSeriesOption)[] = [
     {
       name: '最高',
       type: 'line',
       data: maxArr,
       smooth: true,
       symbol: 'circle',
-      showSymbol: false,
+      showSymbol: true,
+      symbolSize: 8,
       lineStyle: { width: 2, color: '#d54941' },
       areaStyle: { color: 'rgba(213,73,65,0.08)' },
-      yAxisIndex: 0
+      yAxisIndex: 0,
+      markPoint: {
+        symbol: 'none',
+        label: {
+          show: true,
+          formatter: function(params: any) {
+            const index = params.dataIndex
+            return icons[index] || ''
+          },
+          fontSize: 16,
+          color: '#333'
+        },
+        data: maxArr.map((value, index) => ({
+          value: value,
+          xAxis: index,
+          yAxis: value,
+          name: icons[index] || '',
+          itemStyle: { color: 'transparent' }
+        }))
+      }
     },
     {
       name: '最低',
@@ -50,20 +71,37 @@ function getOption(list: WeatherData[]): EChartsOption {
       data: minArr,
       smooth: true,
       symbol: 'circle',
-      showSymbol: false,
+      showSymbol: true,
+      symbolSize: 8,
       lineStyle: { width: 2, color: '#0052d9' },
       areaStyle: { color: 'rgba(0,82,217,0.08)' },
-      yAxisIndex: 0
+      yAxisIndex: 0,
+      markPoint: {
+        symbol: 'none',
+        label: {
+          show: true,
+          formatter: function(params: any) {
+            const index = params.dataIndex
+            return icons[index] || ''
+          },
+          fontSize: 16,
+          color: '#333'
+        },
+        data: minArr.map((value, index) => ({
+          value: value,
+          xAxis: index,
+          yAxis: value,
+          name: icons[index] || '',
+          itemStyle: { color: 'transparent' }
+        }))
+      }
     },
     {
       name: '降雨量',
-      type: 'line',
+      type: 'bar',
       data: precipArr,
-      smooth: true,
-      symbol: 'circle',
-      showSymbol: false,
-      lineStyle: { width: 2, color: '#00b42a' },
-      areaStyle: { color: 'rgba(0,180,42,0.1)' },
+      barWidth: '60%',
+      itemStyle: { color: '#00b42a' },
       yAxisIndex: 1
     }
   ]
@@ -75,14 +113,18 @@ function getOption(list: WeatherData[]): EChartsOption {
       data: curArr,
       smooth: true,
       symbol: 'circle',
-      showSymbol: false,
+      showSymbol: true,
+      symbolSize: 6,
       lineStyle: { width: 2, color: '#2ba471', type: 'dashed' },
       yAxisIndex: 0
     })
   }
 
   return {
-    grid: { left: 48, right: 48, top: 24, bottom: 40 },
+    grid: [
+      { left: 48, right: 48, top: 50, bottom: 120, height: '60%' },
+      { left: 48, right: 48, top: '70%', bottom: 40, height: '20%' }
+    ],
     tooltip: {
       trigger: 'axis',
       formatter: function(params: any) {
@@ -99,15 +141,31 @@ function getOption(list: WeatherData[]): EChartsOption {
       }
     },
     legend: {
-      data: props.showCurrent === false ? ['最高', '最低', '降雨量'] : ['最高', '最低', '当前', '降雨量']
+      data: props.showCurrent === false ? ['最高', '最低', '降雨量'] : ['最高', '最低', '当前', '降雨量'],
+      top: 10,
+      left: 'center',
+      textStyle: {
+        fontSize: 12
+      }
     },
-    xAxis: {
-      type: 'category',
-      data: dates,
-      boundaryGap: false,
-      axisLabel: { color: '#666' },
-      axisLine: { lineStyle: { color: '#ddd' } }
-    },
+    xAxis: [
+      {
+        type: 'category',
+        data: dates,
+        boundaryGap: false,
+        axisLabel: { color: '#666' },
+        axisLine: { lineStyle: { color: '#ddd' } },
+        gridIndex: 0
+      },
+      {
+        type: 'category',
+        data: dates,
+        boundaryGap: true,
+        axisLabel: { color: '#666' },
+        axisLine: { lineStyle: { color: '#ddd' } },
+        gridIndex: 1
+      }
+    ],
     yAxis: [
       {
         type: 'value',
@@ -118,26 +176,95 @@ function getOption(list: WeatherData[]): EChartsOption {
           color: '#666'
         },
         splitLine: { lineStyle: { color: '#eee' } },
-        axisLine: { lineStyle: { color: '#ddd' } }
+        axisLine: { lineStyle: { color: '#ddd' } },
+        gridIndex: 0
       },
       {
         type: 'value',
         name: '降雨量 (mm)',
-        position: 'right',
+        position: 'left',
         axisLabel: {
           formatter: '{value} mm',
           color: '#666'
         },
-        splitLine: { show: false },
-        axisLine: { lineStyle: { color: '#ddd' } }
+        splitLine: { lineStyle: { color: '#eee' } },
+        axisLine: { lineStyle: { color: '#ddd' } },
+        gridIndex: 1
       }
     ],
-    series
+    series: [
+      {
+        name: '最高',
+        type: 'line',
+        data: maxArr,
+        smooth: true,
+        symbol: 'circle',
+        showSymbol: true,
+        symbolSize: 8,
+        lineStyle: { width: 2, color: '#d54941' },
+        areaStyle: { color: 'rgba(213,73,65,0.08)' },
+        xAxisIndex: 0,
+        yAxisIndex: 0
+      },
+      {
+        name: '最低',
+        type: 'line',
+        data: minArr,
+        smooth: true,
+        symbol: 'circle',
+        showSymbol: true,
+        symbolSize: 8,
+        lineStyle: { width: 2, color: '#0052d9' },
+        areaStyle: { color: 'rgba(0,82,217,0.08)' },
+        xAxisIndex: 0,
+        yAxisIndex: 0
+      },
+      {
+        name: '当前',
+        type: 'line',
+        data: curArr,
+        smooth: true,
+        symbol: 'circle',
+        showSymbol: true,
+        symbolSize: 6,
+        lineStyle: { width: 2, color: '#2ba471', type: 'dashed' },
+        xAxisIndex: 0,
+        yAxisIndex: 0
+      },
+      {
+        name: '降雨量',
+        type: 'bar',
+        data: precipArr,
+        barWidth: '60%',
+        itemStyle: { color: '#00b42a' },
+        xAxisIndex: 1,
+        yAxisIndex: 1
+      }
+    ] as (LineSeriesOption | BarSeriesOption)[],
+    graphic: icons.map((icon, index) => ({
+      type: 'text',
+      left: `${(index / (dates.length - 1)) * 100}%`,
+      top: '10%',
+      style: {
+        text: icon,
+        fontSize: 16,
+        fill: '#333'
+      }
+    }))
   }
 }
 
 function renderChart() {
   if (!chartContainer.value) return
+  
+  // 确保容器有尺寸
+  const rect = chartContainer.value.getBoundingClientRect()
+  if (rect.width === 0 || rect.height === 0) {
+    // 如果尺寸为0，延迟重试
+    setTimeout(renderChart, 200)
+    return
+  }
+  
   if (!chart) {
     chart = echarts.init(chartContainer.value)
     window.addEventListener('resize', handleResize)
@@ -151,7 +278,10 @@ function handleResize() {
 }
 
 onMounted(() => {
-  renderChart()
+  // 确保DOM已经渲染完成
+  setTimeout(() => {
+    renderChart()
+  }, 100)
 })
 
 onBeforeUnmount(() => {
@@ -172,6 +302,7 @@ watch(
 <style scoped>
 .weather-line-chart {
   width: 100%;
+  min-height: 200px;
 }
 </style>
 

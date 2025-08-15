@@ -51,7 +51,12 @@
       <t-alert v-if="errorMessage" theme="error" :message="errorMessage" class="no-print" />
       <t-loading :loading="loading" text="数据加载中...">
         <div class="cards-grid">
-          <WeatherCard v-for="item in weatherList" :key="item.date" :weather="item" />
+          <WeatherCard 
+            v-for="item in weatherList" 
+            :key="item.date" 
+            :weather="item" 
+            @click="handleWeatherCardClick"
+          />
         </div>
         <div class="chart-wrapper no-print">
           <WeatherLineChart :data="weatherList" :height="360" />
@@ -65,6 +70,14 @@
         <span v-if="isDefaultLocation" class="location-note">（默认位置）</span>
       </div>
     </div>
+
+    <!-- 日记编辑对话框 -->
+    <WeatherDiary
+      v-if="selectedWeather"
+      v-model:visible="diaryVisible"
+      :weather="selectedWeather"
+      @saved="handleDiarySaved"
+    />
   </div>
 </template>
 
@@ -73,6 +86,7 @@ import { ref, computed, onMounted } from 'vue'
 import { DateUtils } from './utils/dateUtils'
 import WeatherCard from './components/WeatherCard.vue'
 import WeatherLineChart from './components/WeatherLineChart.vue'
+import WeatherDiary from './components/WeatherDiary.vue'
 import { WeatherApiService } from './services/weatherApi'
 import type { WeatherData } from './types/weather'
 import { GeocodingService } from './services/geocoding'
@@ -96,6 +110,10 @@ const endDate = ref(defaultRange.endDate)
 const dateRangeValue = ref<[string, string]>([startDate.value, endDate.value])
 
 const weatherList = ref<WeatherData[]>([])
+
+// 日记相关状态
+const diaryVisible = ref(false)
+const selectedWeather = ref<WeatherData | null>(null)
 
 // 计算标题中显示的城市和省份
 const headerParts = computed(() => {
@@ -235,6 +253,18 @@ async function fetchAll() {
 
 function printPage() {
   window.print()
+}
+
+// 处理天气卡片点击
+function handleWeatherCardClick(weather: WeatherData) {
+  selectedWeather.value = weather
+  diaryVisible.value = true
+}
+
+// 处理日记保存
+function handleDiarySaved(date: string, content: string) {
+  console.log(`日记已保存: ${date}`, content ? '有内容' : '已删除')
+  // 可以在这里添加保存成功的提示或其他逻辑
 }
 
 onMounted(async () => {
