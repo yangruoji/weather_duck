@@ -34,61 +34,96 @@ export class WeatherApiService {
     startDate: string,
     endDate: string
   ): Promise<WeatherData[]> {
-    try {
-      const response = await axios.get<WeatherApiResponse>(API_BASE_URL, {
-        params: {
-          latitude,
-          longitude,
-          start_date: startDate,
-          end_date: endDate,
-          daily: 'temperature_2m_max,temperature_2m_min,precipitation_sum,windspeed_10m_max,winddirection_10m_dominant,cloudcover_mean,weathercode',
-          timezone: 'Asia/Shanghai'
-        }
-      })
-
-      const daily = response.data?.daily
-      if (!daily || !Array.isArray(daily.time)) {
-        throw new Error('天气数据格式异常')
-      }
-
-      const result: WeatherData[] = []
-      const len = daily.time.length
-      for (let i = 0; i < len; i += 1) {
-        const date = daily.time[i]
-        const tmax = daily.temperature_2m_max?.[i]
-        const tmin = daily.temperature_2m_min?.[i]
-        const precip = daily.precipitation_sum?.[i] ?? 0
-        const windSpeed = daily.windspeed_10m_max?.[i] ?? 0
-        const windDirDeg = daily.winddirection_10m_dominant?.[i]
-        const cloud = daily.cloudcover_mean?.[i] ?? 0
-        const wcode = daily.weathercode?.[i] ?? 0
-
-        const info = weatherCodes[wcode] || { description: '未知', icon: '❓' }
-        const windDirection = typeof windDirDeg === 'number' ? this.getWindDirection(windDirDeg) : '不详'
-        const hasT = typeof tmax === 'number' && typeof tmin === 'number'
-
-        result.push({
-          date,
-          temperature: {
-            min: hasT ? Math.round(tmin as number) : 0,
-            max: hasT ? Math.round(tmax as number) : 0,
-            current: hasT ? Math.round(((tmin as number) + (tmax as number)) / 2) : 0
-          },
-          humidity: 60,
-          windSpeed: Math.round(windSpeed as number),
-          windDirection,
-          precipitation: Math.round((precip as number) * 100) / 100,
-          cloudCover: Math.round(cloud as number),
-          description: info.description,
-          icon: info.icon
-        })
-      }
-
-      return result
-    } catch (error) {
-      console.error('获取天气数据失败:', error)
-      throw new Error('获取天气数据失败，请稍后重试')
+    // 离线快速失败
+    const offlineMsg = '网络不可用，请检查连接后重试'
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+      console.warn('离线状态，跳过请求')
+      throw new Error(offlineMsg)
     }
+
+    const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
+    const shouldRetry = (err: any): boolean => {
+      const code = err?.code
+      const msg = String(err?.message || '')
+      const status = err?.response?.status
+      if (code === 'ERR_NETWORK') return true
+      if (/Network Error|ERR_NETWORK_CHANGED/i.test(msg)) return true
+      if (status === 429 || (status >= 500 && status < 600)) return true
+      return false
+    }
+
+    const maxRetries = 3
+    let lastError: any = null
+
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        const response = await axios.get<WeatherApiResponse>(API_BASE_URL, {
+          params: {
+            latitude,
+            longitude,
+            start_date: startDate,
+            end_date: endDate,
+            daily: 'temperature_2m_max,temperature_2m_min,precipitation_sum,windspeed_10m_max,winddirection_10m_dominant,cloudcover_mean,weathercode',
+            timezone: 'Asia/Shanghai'
+          },
+          timeout: 10000
+        })
+
+        const daily = response.data?.daily
+        if (!daily || !Array.isArray(daily.time)) {
+          throw new Error('天气数据格式异常')
+        }
+
+        const result: WeatherData[] = []
+        const len = daily.time.length
+        for (let i = 0; i < len; i += 1) {
+          const date = daily.time[i]
+          const tmax = daily.temperature_2m_max?.[i]
+          const tmin = daily.temperature_2m_min?.[i]
+          const precip = daily.precipitation_sum?.[i] ?? 0
+          const windSpeed = daily.windspeed_10m_max?.[i] ?? 0
+          const windDirDeg = daily.winddirection_10m_dominant?.[i]
+          const cloud = daily.cloudcover_mean?.[i] ?? 0
+          const wcode = daily.weathercode?.[i] ?? 0
+
+          const info = weatherCodes[wcode] || { description: '未知', icon: '❓' }
+          const windDirection = typeof windDirDeg === 'number' ? this.getWindDirection(windDirDeg) : '不详'
+          const hasT = typeof tmax === 'number' && typeof tmin === 'number'
+
+          result.push({
+            date,
+            temperature: {
+              min: hasT ? Math.round(tmin as number) : 0,
+              max: hasT ? Math.round(tmax as number) : 0,
+              current: hasT ? Math.round(((tmin as number) + (tmax as number)) / 2) : 0
+            },
+            humidity: 60,
+            windSpeed: Math.round(windSpeed as number),
+            windDirection,
+            precipitation: Math.round((precip as number) * 100) / 100,
+            cloudCover: Math.round(cloud as number),
+            description: info.description,
+            icon: info.icon
+          })
+        }
+
+        return result
+      } catch (error: any) {
+        lastError = error
+        if (attempt < maxRetries && shouldRetry(error)) {
+          const base = 500
+          const wait = base * Math.pow(2, attempt) + Math.floor(Math.random() * 300)
+          console.warn(`获取天气数据失败，准备重试(${attempt + 1}/${maxRetries})，等待 ${wait}ms`, error)
+          await sleep(wait)
+          continue
+        }
+        console.error('获取天气数据失败:', error)
+        const msg = shouldRetry(error) ? '网络波动，获取天气数据失败，请稍后重试' : '获取天气数据失败，请稍后重试'
+        throw new Error(msg)
+      }
+    }
+
+    throw lastError || new Error('获取天气数据失败，请稍后重试')
   }
 
   // 获取实时天气（用于今天的补充信息）

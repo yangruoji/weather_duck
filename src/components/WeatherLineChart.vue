@@ -100,7 +100,7 @@ function getOption(list: WeatherData[]): EChartsOption {
       name: '降雨量',
       type: 'bar',
       data: precipArr,
-      barWidth: '60%',
+      barWidth: '40%',
       itemStyle: { color: '#00b42a' },
       yAxisIndex: 1
     }
@@ -122,8 +122,8 @@ function getOption(list: WeatherData[]): EChartsOption {
 
   return {
     grid: [
-      { left: 48, right: 48, top: 50, bottom: 120, height: '60%' },
-      { left: 48, right: 48, top: '70%', bottom: 40, height: '20%' }
+      { left: 48, right: 48, top: 50, bottom: 120, height: '65%' },
+      { left: 48, right: 48, top: '75%', bottom: 40, height: '15%' }
     ],
     tooltip: {
       trigger: 'axis',

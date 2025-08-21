@@ -11,7 +11,11 @@
       <div class="weather-summary" v-if="weather">
         <div class="weather-icon">{{ weather.icon || '🌤️' }}</div>
         <div class="weather-info">
-          <div class="temperature">{{ weather.temperature?.current || 0 }}°</div>
+          <div class="temp-row">
+            <img v-if="imageData" class="diary-thumb" :src="imageData" alt="日记图片" />
+            <div class="temperature">{{ weather.temperature?.current || 0 }}°</div>
+            <div class="snippet" v-if="savedPreview">{{ savedPreview }}</div>
+          </div>
           <div class="description">{{ weather.description || '未知天气' }}</div>
           <div class="details">
             {{ weather.temperature?.min || 0 }}° / {{ weather.temperature?.max || 0 }}° · 
@@ -19,6 +23,10 @@
             风力: {{ weather.windSpeed || 0 }}km/h {{ weather.windDirection || '' }}
           </div>
         </div>
+      </div>
+
+      <div class="diary-preview" v-if="savedContent">
+        已保存日记：{{ savedPreview }}
       </div>
       
       <div class="diary-editor">
@@ -30,6 +38,19 @@
           show-limit-number
           clearable
         />
+      </div>
+
+      <div class="image-uploader">
+        <t-space align="center">
+          <input type="file" multiple accept="image/*" @change="onFilesChange" />
+          <t-button v-if="imageList.length > 0" variant="outline" theme="danger" size="small" @click="clearAllImages">清空图片</t-button>
+        </t-space>
+        <div class="images-preview" v-if="imageList.length > 0">
+          <div class="image-item" v-for="(img, index) in imageList" :key="index">
+            <img :src="img" alt="预览" />
+            <t-button size="small" theme="danger" variant="text" @click="removeImage(index)">×</t-button>
+          </div>
+        </div>
       </div>
       
       <div class="diary-actions">
@@ -65,6 +86,17 @@ const emit = defineEmits<Emits>()
 
 const diaryText = ref('')
 const saving = ref(false)
+const savedContent = ref('')
+const imageData = ref<string>('') // 封面（第一张）
+const imageList = ref<string[]>([])
+const imageDirty = ref(false)
+
+const savedPreview = computed(() => {
+  const text = savedContent.value.trim()
+  if (!text) return ''
+  const head = text.slice(0, 10)
+  return head + (text.length > 10 ? '…' : '')
+})
 
 const date = computed(() => {
   if (!props.weather || !props.weather.date) return ''
@@ -77,25 +109,44 @@ watch(() => props.visible, async (newVisible) => {
     await loadDiary()
   } else {
     diaryText.value = ''
+    imageData.value = ''
+    imageList.value = []
+    imageDirty.value = false
   }
 })
 
 // 从数据库加载日记
 async function loadDiary() {
   if (!props.weather || !props.weather.date) {
+    savedContent.value = ''
     diaryText.value = ''
+    imageData.value = ''
+    imageList.value = []
+    imageDirty.value = false
     return
   }
   try {
     const diary = await diaryDb.getDiary(props.weather.date)
     if (diary) {
-      diaryText.value = diary.content
+      savedContent.value = diary.content || ''
+      diaryText.value = diary.content || ''
+      imageData.value = diary.image || ''
+      imageList.value = diary.images || []
+      imageDirty.value = false
     } else {
+      savedContent.value = ''
       diaryText.value = ''
+      imageData.value = ''
+      imageList.value = []
+      imageDirty.value = false
     }
   } catch (e) {
     console.warn('加载日记失败:', e)
+    savedContent.value = ''
     diaryText.value = ''
+    imageData.value = ''
+    imageList.value = []
+    imageDirty.value = false
   }
 }
 
@@ -110,7 +161,10 @@ async function handleSave() {
     // 如果内容为空，删除日记
     try {
       await diaryDb.deleteDiary(props.weather.date)
+      savedContent.value = ''
       emit('saved', props.weather.date, '')
+      // 通知全局刷新（卡片实时更新）
+      window.dispatchEvent(new CustomEvent('diary:saved', { detail: { date: props.weather.date } }))
       handleClose()
     } catch (e) {
       console.error('删除日记失败:', e)
@@ -120,14 +174,62 @@ async function handleSave() {
 
   saving.value = true
   try {
-    await diaryDb.saveDiary(props.weather.date, diaryText.value.trim(), props.weather)
+    await diaryDb.saveDiary(
+      props.weather.date,
+      diaryText.value.trim(),
+      props.weather,
+      imageDirty.value ? imageData.value : undefined,
+      imageDirty.value ? imageList.value : undefined
+    )
+    savedContent.value = diaryText.value.trim()
     emit('saved', props.weather.date, diaryText.value.trim())
+    // 通知全局刷新（卡片实时更新）
+    window.dispatchEvent(new CustomEvent('diary:saved', { detail: { date: props.weather.date } }))
     handleClose()
   } catch (e) {
     console.error('保存日记失败:', e)
   } finally {
     saving.value = false
   }
+}
+
+function onFilesChange(e: Event) {
+  const input = e.target as HTMLInputElement
+  const files = input.files
+  if (!files) return
+  
+  const newImages: string[] = []
+  for (let i = 0; i < files.length; i++) {
+    const file = files[i]
+    const reader = new FileReader()
+    reader.onload = () => {
+      newImages.push(String(reader.result || ''))
+      if (newImages.length === files.length) {
+        imageList.value = [...imageList.value, ...newImages]
+        if (imageList.value.length > 0) {
+          imageData.value = imageList.value[0]
+        }
+        imageDirty.value = true
+      }
+    }
+    reader.readAsDataURL(file)
+  }
+}
+
+function removeImage(index: number) {
+  imageList.value.splice(index, 1)
+  if (index === 0 && imageList.value.length > 0) {
+    imageData.value = imageList.value[0]
+  } else if (imageList.value.length === 0) {
+    imageData.value = ''
+  }
+  imageDirty.value = true
+}
+
+function clearAllImages() {
+  imageData.value = ''
+  imageList.value = []
+  imageDirty.value = true
 }
 
 function handleClose() {
@@ -169,6 +271,26 @@ function handleVisibleChange(value: boolean) {
   margin-bottom: 4px;
 }
 
+.temp-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.diary-thumb {
+  width: 40px;
+  height: 40px;
+  object-fit: cover;
+  border-radius: 4px;
+}
+
+.snippet {
+  margin-left: 8px;
+  color: #666;
+  font-size: 14px;
+  white-space: nowrap;
+}
+
 .description {
   font-size: 18px;
   color: #333;
@@ -180,8 +302,50 @@ function handleVisibleChange(value: boolean) {
   color: #666;
 }
 
+.diary-preview {
+  margin-bottom: 12px;
+  font-size: 14px;
+  color: #666;
+}
+
 .diary-editor {
   margin-bottom: 20px;
+}
+
+.image-uploader {
+  margin-bottom: 12px;
+}
+
+.images-preview {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.image-item {
+  position: relative;
+  width: 80px;
+  height: 80px;
+}
+
+.image-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 6px;
+}
+
+.image-item button {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  padding: 0;
+  font-size: 14px;
+  line-height: 1;
 }
 
 .diary-actions {

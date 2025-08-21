@@ -58,10 +58,16 @@
             @click="handleWeatherCardClick"
           />
         </div>
-        <div class="chart-wrapper no-print">
-          <WeatherLineChart :data="weatherList" :height="360" />
-        </div>
       </t-loading>
+    </div>
+
+    <!-- 天气趋势图表 - 移至最下方 -->
+    <div class="chart-section no-print">
+      <div class="section-divider"></div>
+      <div class="chart-container">
+        <h2 class="chart-title">天气趋势图表</h2>
+        <WeatherLineChart :data="weatherList" :height="400" />
+      </div>
     </div>
 
     <div class="app-footer no-print">
@@ -319,20 +325,44 @@ onMounted(async () => {
   font-weight: 400;
 }
 .cards-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 16px;
-  padding: 16px;
-}
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 16px;
+    padding: 16px 16px 8px;
+  }
 .chart-wrapper {
-  padding: 16px 16px 0;
-}
-.app-footer .footer {
-  padding: 12px 16px;
-  color: #666;
-  font-size: 12px;
-  text-align: center;
-}
+    padding: 16px 16px 0;
+  }
+  .chart-section {
+    padding: 48px 16px 32px;
+    background: #ffffff;
+    border-top: 2px solid #e8e8e8;
+    margin-top: 32px;
+  }
+  .chart-container {
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+  .chart-title {
+    font-size: 20px;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 20px;
+    text-align: center;
+  }
+  .section-divider {
+    height: 1px;
+    background: linear-gradient(to right, transparent, #ddd, transparent);
+    margin: 0 auto 40px;
+    width: 80%;
+    max-width: 600px;
+  }
+  .app-footer .footer {
+    padding: 12px 16px;
+    color: #666;
+    font-size: 12px;
+    text-align: center;
+  }
 .location-note {
   color: #999;
   font-style: italic;
@@ -381,6 +411,9 @@ onMounted(async () => {
     grid-template-columns: repeat(3, 1fr);
     gap: 12px;
     padding: 0;
+  }
+  .chart-section {
+    display: none !important;
   }
 }
 </style>
