@@ -1,0 +1,26 @@
+{
+  "name": "Weather Duck - 天气日记",
+  "short_name": "Weather Duck",
+  "description": "记录天气与心情的日记应用",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#4A90E2",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/apple-touch-icon.svg",
+      "sizes": "180x180",
+      "type": "image/svg+xml",
+      "purpose": "apple touch icon"
+    }
+  ],
+  "categories": ["lifestyle", "weather", "productivity"],
+  "lang": "zh-CN"
+}
