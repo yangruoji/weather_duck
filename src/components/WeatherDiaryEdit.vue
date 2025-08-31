@@ -138,7 +138,8 @@
 import { ref, watch, computed } from 'vue'
 import { WeatherData } from '../types/weather'
 import { DateUtils } from '../utils/dateUtils'
-import { diaryDb } from '../services/diaryDb'
+import { StorageAdapter } from '../services/storageAdapter'
+import type { WeatherDiary } from '../config/supabase'
 
 interface Props {
   visible: boolean
@@ -209,7 +210,7 @@ async function loadDiary() {
   }
   
   try {
-    const diary = await diaryDb.getDiary(props.weather.date)
+    const diary = await StorageAdapter.getDiary(props.weather.date)
     if (diary) {
       hasExistingDiary.value = true
       cityLocation.value = diary.city || ''
@@ -362,17 +363,18 @@ async function handleSave() {
     // 提取视频URL
     const videoUrl = videoFiles.value.length > 0 ? videoFiles.value[0].url : ''
     
-    // 保存到数据库
-    await diaryDb.saveDiary(
-      props.weather.date,
-      diaryText.value.trim(),
-      props.weather,
-      imageUrls[0] || '', // 第一张图片作为封面
-      imageUrls,
-      selectedMood.value,
-      cityLocation.value.trim(),
-      videoUrl
-    )
+
+    
+    // 保存到数据库（StorageAdapter会自动选择存储方式）
+    await StorageAdapter.saveDiary({
+      date: props.weather.date,
+      content: diaryText.value.trim(),
+      weather_data: props.weather,
+      images: imageUrls,
+      mood: selectedMood.value,
+      city: cityLocation.value.trim(),
+      video: videoUrl
+    })
     
     emit('saved', props.weather.date, diaryText.value.trim())
     // 通知全局刷新
@@ -392,7 +394,7 @@ async function handleDelete() {
   if (!props.weather || !props.weather.date) return
   
   try {
-    await diaryDb.deleteDiary(props.weather.date)
+    await StorageAdapter.deleteDiary(props.weather.date)
     emit('saved', props.weather.date, '')
     // 通知全局刷新
     window.dispatchEvent(new CustomEvent('diary:saved', { 

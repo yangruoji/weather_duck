@@ -96,7 +96,8 @@
 import { ref, watch, computed } from 'vue'
 import { WeatherData } from '../types/weather'
 import { DateUtils } from '../utils/dateUtils'
-import { diaryDb, DiaryEntry } from '../services/diaryDb'
+import { StorageAdapter } from '../services/storageAdapter'
+import type { WeatherDiary } from '../config/supabase'
 
 interface Props {
   visible: boolean
@@ -111,7 +112,7 @@ interface Emits {
 const props = defineProps<Props>()
 const emit = defineEmits<Emits>()
 
-const diaryData = ref<DiaryEntry | null>(null)
+const diaryData = ref<WeatherDiary | null>(null)
 const imagePreviewVisible = ref(false)
 const previewIndex = ref(0)
 
@@ -135,7 +136,7 @@ async function loadDiary() {
   }
   
   try {
-    const diary = await diaryDb.getDiary(props.weather.date)
+    const diary = await StorageAdapter.getDiary(props.weather.date)
     diaryData.value = diary
   } catch (e) {
     console.warn('加载日记失败:', e)

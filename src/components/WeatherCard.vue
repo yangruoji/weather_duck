@@ -80,7 +80,8 @@
 import { computed, ref, onMounted, onUnmounted } from 'vue'
 import { WeatherData } from '../types/weather'
 import { DateUtils } from '../utils/dateUtils'
-import { diaryDb, DiaryEntry } from '../services/diaryDb'
+import { StorageAdapter } from '../services/storageAdapter'
+import type { WeatherDiary } from '../config/supabase'
 
 interface Props {
   weather: WeatherData
@@ -102,11 +103,11 @@ const isToday = computed(() => {
 })
 
 const hasDiary = ref(false)
-const diaryData = ref<DiaryEntry | null>(null)
+const diaryData = ref<WeatherDiary | null>(null)
 
 async function loadDiary() {
   try {
-    const diary = await diaryDb.getDiary(props.weather.date)
+    const diary = await StorageAdapter.getDiary(props.weather.date)
     if (diary) {
       hasDiary.value = true
       diaryData.value = diary
@@ -144,7 +145,7 @@ function getDiaryPreview(content: string): string {
   return head + (text.length > 10 ? '…' : '')
 }
 
-function getFirstImage(diary: DiaryEntry): string {
+function getFirstImage(diary: WeatherDiary): string {
   if (diary.images && diary.images.length > 0) {
     return diary.images[0]
   }

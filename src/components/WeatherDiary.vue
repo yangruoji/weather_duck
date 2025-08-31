@@ -69,7 +69,7 @@
 import { ref, watch, computed } from 'vue'
 import { WeatherData } from '../types/weather'
 import { DateUtils } from '../utils/dateUtils'
-import { diaryDb } from '../services/diaryDb'
+import { StorageAdapter } from '../services/storageAdapter'
 
 interface Props {
   visible: boolean
@@ -126,11 +126,11 @@ async function loadDiary() {
     return
   }
   try {
-    const diary = await diaryDb.getDiary(props.weather.date)
+    const diary = await StorageAdapter.getDiary(props.weather.date)
     if (diary) {
       savedContent.value = diary.content || ''
       diaryText.value = diary.content || ''
-      imageData.value = diary.image || ''
+      imageData.value = diary.images?.[0] || ''
       imageList.value = diary.images || []
       imageDirty.value = false
     } else {
@@ -160,7 +160,7 @@ async function handleSave() {
   if (!diaryText.value.trim()) {
     // 如果内容为空，删除日记
     try {
-      await diaryDb.deleteDiary(props.weather.date)
+      await StorageAdapter.deleteDiary(props.weather.date)
       savedContent.value = ''
       emit('saved', props.weather.date, '')
       // 通知全局刷新（卡片实时更新）
@@ -174,12 +174,15 @@ async function handleSave() {
 
   saving.value = true
   try {
-    await diaryDb.saveDiary(
-      props.weather.date,
-      diaryText.value.trim(),
-      props.weather,
-      imageDirty.value ? imageData.value : undefined,
-      imageDirty.value ? imageList.value : undefined
+    await StorageAdapter.saveDiary({
+      date: props.weather.date,
+      content: diaryText.value.trim(),
+      weather_data: props.weather,
+      coverImage: imageDirty.value ? imageData.value : '',
+      images: imageDirty.value ? imageList.value : [],
+      mood: '',
+      city: '',
+      video: ''
     )
     savedContent.value = diaryText.value.trim()
     emit('saved', props.weather.date, diaryText.value.trim())

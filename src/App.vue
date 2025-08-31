@@ -79,7 +79,7 @@
         <div class="footer-author">
           <span class="author-info">
             作者：杨若即 · 
-            <a href="mailto:yangruoji@example.com" class="email-link">yangruoji@example.com</a>
+            <a href="mailto:yangruoji@outlook.com" class="email-link">yangruoji@outlook.com</a>
           </span>
           <a 
             href="https://github.com/yangruoji/weather_duck.git" 
@@ -129,6 +129,7 @@ import AboutDialog from './components/AboutDialog.vue'
 import { WeatherApiService } from './services/weatherApi'
 import type { WeatherData } from './types/weather'
 import { GeocodingService } from './services/geocoding'
+import { initializeSupabase } from './utils/initSupabase'
 
 const loading = ref(false)
 const locating = ref(false)
@@ -310,8 +311,8 @@ async function handleWeatherCardClick(weather: WeatherData) {
   
   // 检查是否已有日记内容
   try {
-    const { diaryDb } = await import('./services/diaryDb')
-    const diary = await diaryDb.getDiary(weather.date)
+    const { SupabaseDiaryService } = await import('./services/supabaseDiary')
+    const diary = await SupabaseDiaryService.getDiary(weather.date)
     
     if (diary && (diary.content?.trim() || diary.images?.length || diary.video || diary.mood)) {
       // 有任何内容（文字、图片、视频或心情），显示查看界面
@@ -381,6 +382,9 @@ function handleScroll() {
 }
 
 onMounted(async () => {
+  // 初始化Supabase
+  await initializeSupabase()
+  
   try {
     const loc = await WeatherApiService.getCurrentLocation()
     latitude.value = loc.latitude

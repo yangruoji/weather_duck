@@ -7,7 +7,7 @@ import { onMounted, onBeforeUnmount, ref, watch, computed } from 'vue'
 import * as echarts from 'echarts'
 import type { ECharts as TECharts, EChartsOption, LineSeriesOption, BarSeriesOption } from 'echarts'
 import type { WeatherData } from '../types/weather'
-import { diaryDb } from '../services/diaryDb'
+import { StorageAdapter } from '../services/storageAdapter'
 
 interface Props {
   data: WeatherData[]
@@ -32,10 +32,10 @@ const diaryData = ref<Record<string, any>>({})
 // 获取日记数据
 async function loadDiaryMoods() {
   try {
-    const diaries = await diaryDb.getAllDiaries()
+    const diaries = await StorageAdapter.getAllDiaries()
     const moodMap: Record<string, string> = {}
     const dataMap: Record<string, any> = {}
-    diaries.forEach(diary => {
+    diaries.forEach((diary: any) => {
       if (diary.mood) {
         moodMap[diary.date] = diary.mood
       }
