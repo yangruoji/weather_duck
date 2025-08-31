@@ -6,6 +6,9 @@ export interface DiaryEntry {
   content: string
   image?: string
   images?: string[]
+  mood?: string
+  city?: string
+  video?: string
   weather: {
     temperature: {
       current: number
@@ -110,6 +113,9 @@ class DiaryDatabase {
       weather: row.weather as CleanWeather,
       image: toString(row.image, ''),
       images: Array.isArray(row.images) ? row.images as string[] : [],
+      mood: toString(row.mood, ''),
+      city: toString(row.city, ''),
+      video: toString(row.video, ''),
       createdAt: createdAtMs || Date.now(),
       updatedAt: updatedAtMs || Date.now(),
     }
@@ -141,7 +147,7 @@ class DiaryDatabase {
   }
 
   // ========== 对外 API（自动选择 Supabase 或 IndexedDB） ==========
-  async saveDiary(date: string, content: string, weather: any, image?: string, images?: string[]): Promise<void> {
+  async saveDiary(date: string, content: string, weather: any, image?: string, images?: string[], mood?: string, city?: string, video?: string): Promise<void> {
     const id = `diary_${date}`
     const now = Date.now()
     const cleanWeather = cleanWeatherObj(weather)
@@ -165,6 +171,9 @@ class DiaryDatabase {
         weather: cleanWeather as any,
         image: cover || '',
         images: savedImages,
+        mood: mood === undefined ? (existing?.mood ?? '') : mood,
+        city: city === undefined ? (existing?.city ?? '') : city,
+        video: video === undefined ? (existing?.video ?? '') : video,
         created_at: existing?.createdAt ? new Date(existing.createdAt).toISOString() : new Date(now).toISOString(),
         updated_at: new Date(now).toISOString(),
       }
@@ -195,6 +204,9 @@ class DiaryDatabase {
         weather: cleanWeather,
         image: image === undefined ? (existing?.image ?? '') : image,
         images: images === undefined ? (existing?.images ?? []) : [...images],
+        mood: mood === undefined ? (existing?.mood ?? '') : mood,
+        city: city === undefined ? (existing?.city ?? '') : city,
+        video: video === undefined ? (existing?.video ?? '') : video,
         createdAt: existing?.createdAt ?? now,
         updatedAt: now,
       }

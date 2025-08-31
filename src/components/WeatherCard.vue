@@ -41,35 +41,30 @@
       </div>
     </div>
 
-    <div class="diary-preview" v-if="diaryData">
-      <div class="diary-content" v-if="diaryData.content">
-        <div class="diary-text">{{ getDiaryPreview(diaryData.content) }}</div>
-      </div>
-      <div class="diary-image" v-if="getFirstImage(diaryData)">
-        <img :src="getFirstImage(diaryData)" alt="日记图片" />
-      </div>
-    </div>
-    
-    <div class="image-upload" v-if="hasDiary" @click.stop>
-      <input type="file" multiple accept="image/*" @change="onImagesChange" ref="fileInput" style="display: none" />
-      <t-button size="small" variant="outline" @click="triggerUpload">
-        <t-icon name="add" size="14" />
-        上传图片
-      </t-button>
-      <div class="image-gallery" v-if="uploadedImages.length > 0">
-        <div class="image-item" v-for="(img, index) in uploadedImages" :key="index">
-          <img :src="img" alt="上传图片" />
-          <t-button size="small" theme="danger" variant="text" @click="removeImage(index)">×</t-button>
+    <!-- 日记预览区域 -->
+    <div class="diary-section">
+      <div class="diary-preview" v-if="diaryData && (diaryData.mood || getFirstImage(diaryData) || diaryData.content)">
+        <!-- 心情优先显示 -->
+        <!-- 1. 心情优先显示 -->
+        <div class="diary-mood" v-if="diaryData.mood">
+          <span class="mood-icon">{{ getMoodIcon(diaryData.mood) }}</span>
+          <span class="mood-text">{{ diaryData.mood }}</span>
+        </div>
+        <!-- 2. 图片第二显示 -->
+        <div class="diary-image" v-if="getFirstImage(diaryData)">
+          <img :src="getFirstImage(diaryData)" alt="日记图片" />
+        </div>
+        <!-- 3. 文本最后显示 -->
+        <div class="diary-content" v-if="diaryData.content">
+          <div class="diary-text">{{ getDiaryPreview(diaryData.content) }}</div>
         </div>
       </div>
-    </div>
-    
-    <div class="diary-empty-cta" v-if="!hasDiary" @click.stop="handleCardClick">
-      写一写今天对天气的感受吧
-    </div>
-
-    <div class="diary-indicator" v-if="hasDiary">
-      <t-icon name="edit" size="16" />
+      
+      <!-- 无日记时显示编辑提示 -->
+      <div class="diary-empty" v-else>
+        <t-icon name="edit-1" size="20" class="edit-icon" />
+        <span class="edit-hint">点击记录今日心情</span>
+      </div>
     </div>
   </t-card>
 </template>
@@ -101,8 +96,6 @@ const isToday = computed(() => {
 
 const hasDiary = ref(false)
 const diaryData = ref<DiaryEntry | null>(null)
-const uploadedImages = ref<string[]>([])
-const fileInput = ref<HTMLInputElement>()
 
 async function loadDiary() {
   try {
@@ -110,11 +103,9 @@ async function loadDiary() {
     if (diary) {
       hasDiary.value = true
       diaryData.value = diary
-      uploadedImages.value = diary.images || []
     } else {
       hasDiary.value = false
       diaryData.value = null
-      uploadedImages.value = []
     }
   } catch (e) {
     console.warn('加载日记失败:', e)
@@ -153,49 +144,18 @@ function getFirstImage(diary: DiaryEntry): string {
   return diary.image || ''
 }
 
-function triggerUpload() {
-  fileInput.value?.click()
-}
-
-async function onImagesChange(e: Event) {
-  const input = e.target as HTMLInputElement
-  const files = input.files
-  if (!files) return
-  
-  const newImages: string[] = []
-  for (let i = 0; i < files.length; i++) {
-    const file = files[i]
-    const reader = new FileReader()
-    reader.onload = () => {
-      newImages.push(String(reader.result || ''))
-      if (newImages.length === files.length) {
-        uploadedImages.value = [...uploadedImages.value, ...newImages]
-        saveImages()
-      }
-    }
-    reader.readAsDataURL(file)
+function getMoodIcon(mood: string): string {
+  const moodIcons: Record<string, string> = {
+    '开心': '😊',
+    '愉快': '😄',
+    '平静': '😌',
+    '忧郁': '😔',
+    '烦躁': '😤',
+    '兴奋': '🤩',
+    '放松': '😎',
+    '疲惫': '😴'
   }
-}
-
-function removeImage(index: number) {
-  uploadedImages.value.splice(index, 1)
-  saveImages()
-}
-
-async function saveImages() {
-  try {
-    // 保持现有的日记内容，只更新图片
-    const content = diaryData.value?.content || ''
-    // 确保传递完整的天气数据和图片数组
-    await diaryDb.saveDiary(props.weather.date, content, props.weather, uploadedImages.value[0], uploadedImages.value)
-    await loadDiary()
-    // 触发保存事件，通知其他组件更新
-    window.dispatchEvent(new CustomEvent('diary:saved', { 
-      detail: { date: props.weather.date } 
-    }))
-  } catch (e) {
-    console.error('保存图片失败:', e)
-  }
+  return moodIcons[mood] || '😊'
 }
 
 function handleCardClick() {
@@ -311,20 +271,22 @@ function handleCardClick() {
   font-weight: 500;
 }
 
-.diary-preview {
+.diary-section {
   margin-top: 16px;
   padding-top: 16px;
   border-top: 1px solid #eee;
 }
 
+.diary-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
 .diary-text {
   font-size: 14px;
   color: #666;
-  margin-bottom: 8px;
-}
-
-.diary-image {
-  margin-bottom: 8px;
+  line-height: 1.4;
 }
 
 .diary-image img {
@@ -334,70 +296,47 @@ function handleCardClick() {
   border-radius: 6px;
 }
 
-.image-upload {
-  margin-top: 12px;
-}
-
-.image-gallery {
+.diary-mood {
   display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 8px;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
 }
 
-.image-item {
-  position: relative;
-  width: 60px;
-  height: 60px;
+.mood-icon {
+  font-size: 16px;
 }
 
-.image-item img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  border-radius: 4px;
+.mood-text {
+  color: #666;
+  font-weight: 500;
 }
 
-.image-item button {
-  position: absolute;
-  top: -4px;
-  right: -4px;
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  padding: 0;
-  font-size: 12px;
-  line-height: 1;
-}
-
-.diary-empty-cta {
-  margin-top: 16px;
-  padding: 10px 12px;
-  border: 1px dashed #0052d9;
-  color: #0052d9;
-  background: rgba(0, 82, 217, 0.05);
-  border-radius: 8px;
-  text-align: center;
-  cursor: pointer;
-  user-select: none;
-}
-
-.diary-empty-cta:hover {
-  background: rgba(0, 82, 217, 0.08);
-}
-
-.diary-indicator {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  background: rgba(0, 82, 217, 0.1);
-  color: #0052d9;
-  border-radius: 50%;
-  width: 24px;
-  height: 24px;
+.diary-empty {
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: 8px;
+  padding: 12px;
+  border: 1px dashed #d0d0d0;
+  border-radius: 8px;
+  color: #999;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.diary-empty:hover {
+  border-color: #0052d9;
+  color: #0052d9;
+  background: rgba(0, 82, 217, 0.02);
+}
+
+.edit-icon {
+  opacity: 0.6;
+}
+
+.edit-hint {
+  font-size: 14px;
 }
 
 @media (max-width: 768px) {

@@ -1,6 +1,5 @@
 <template>
   <div class="weather-line-chart" :style="{ height: containerHeight }" ref="chartContainer"></div>
-  
 </template>
 
 <script setup lang="ts">
@@ -8,6 +7,7 @@ import { onMounted, onBeforeUnmount, ref, watch, computed } from 'vue'
 import * as echarts from 'echarts'
 import type { ECharts as TECharts, EChartsOption, LineSeriesOption, BarSeriesOption } from 'echarts'
 import type { WeatherData } from '../types/weather'
+import { diaryDb } from '../services/diaryDb'
 
 interface Props {
   data: WeatherData[]
@@ -19,6 +19,25 @@ const props = defineProps<Props>()
 
 const chartContainer = ref<HTMLDivElement | null>(null)
 let chart: TECharts | null = null
+
+// 日记心情数据
+const diaryMoods = ref<Record<string, string>>({})
+
+// 获取日记心情数据
+async function loadDiaryMoods() {
+  try {
+    const diaries = await diaryDb.getAllDiaries()
+    const moodMap: Record<string, string> = {}
+    diaries.forEach(diary => {
+      if (diary.mood) {
+        moodMap[diary.date] = diary.mood
+      }
+    })
+    diaryMoods.value = moodMap
+  } catch (error) {
+    console.error('加载日记心情失败:', error)
+  }
+}
 
 const containerHeight = computed(() => {
   const h = props.height ?? 340
@@ -33,228 +52,172 @@ function getOption(list: WeatherData[]): EChartsOption {
   const precipArr = list.map((d) => d.precipitation)
   const icons = list.map((d) => d.icon)
 
-  const series: (LineSeriesOption | BarSeriesOption)[] = [
-    {
-      name: '最高',
-      type: 'line',
-      data: maxArr,
-      smooth: true,
-      symbol: 'circle',
-      showSymbol: true,
-      symbolSize: 8,
-      lineStyle: { width: 2, color: '#d54941' },
-      areaStyle: { color: 'rgba(213,73,65,0.08)' },
-      yAxisIndex: 0,
-      markPoint: {
-        symbol: 'none',
-        label: {
-          show: true,
-          formatter: function(params: any) {
-            const index = params.dataIndex
-            return icons[index] || ''
-          },
-          fontSize: 16,
-          color: '#333'
-        },
-        data: maxArr.map((value, index) => ({
-          value: value,
-          xAxis: index,
-          yAxis: value,
-          name: icons[index] || '',
-          itemStyle: { color: 'transparent' }
-        }))
-      }
-    },
-    {
-      name: '最低',
-      type: 'line',
-      data: minArr,
-      smooth: true,
-      symbol: 'circle',
-      showSymbol: true,
-      symbolSize: 8,
-      lineStyle: { width: 2, color: '#0052d9' },
-      areaStyle: { color: 'rgba(0,82,217,0.08)' },
-      yAxisIndex: 0,
-      markPoint: {
-        symbol: 'none',
-        label: {
-          show: true,
-          formatter: function(params: any) {
-            const index = params.dataIndex
-            return icons[index] || ''
-          },
-          fontSize: 16,
-          color: '#333'
-        },
-        data: minArr.map((value, index) => ({
-          value: value,
-          xAxis: index,
-          yAxis: value,
-          name: icons[index] || '',
-          itemStyle: { color: 'transparent' }
-        }))
-      }
-    },
-    {
-      name: '降雨量',
-      type: 'bar',
-      data: precipArr,
-      barWidth: '40%',
-      itemStyle: { color: '#00b42a' },
-      yAxisIndex: 1
-    }
-  ]
-
-  if (props.showCurrent !== false) {
-    series.push({
-      name: '当前',
-      type: 'line',
-      data: curArr,
-      smooth: true,
-      symbol: 'circle',
-      showSymbol: true,
-      symbolSize: 6,
-      lineStyle: { width: 2, color: '#2ba471', type: 'dashed' },
-      yAxisIndex: 0
-    })
-  }
-
   return {
-    grid: [
-      { left: 48, right: 48, top: 50, bottom: 120, height: '65%' },
-      { left: 48, right: 48, top: '75%', bottom: 40, height: '15%' }
-    ],
+    grid: {
+      left: 60,
+      right: 60, 
+      top: 80,
+      bottom: 60
+    },
     tooltip: {
       trigger: 'axis',
       formatter: function(params: any) {
         if (!Array.isArray(params)) return ''
-        let result = params[0].axisValue + '<br/>'
+        const dataIndex = params[0].dataIndex
+        const weather = list[dataIndex]
+        const date = dates[dataIndex]
+        const mood = diaryMoods.value[date]
+        
+        let result = `<div style="font-weight: bold; margin-bottom: 8px; font-size: 14px;">${params[0].axisValue}</div>`
+        
+        // 天气信息
+        result += `<div style="margin-bottom: 8px; display: flex; align-items: center; gap: 8px;">`
+        result += `<span style="font-size: 18px;">${icons[dataIndex]}</span>`
+        result += `<span style="font-weight: 500;">${weather.description}</span>`
+        if (mood) {
+          result += `<span style="font-size: 16px; margin-left: 8px;">${mood}</span>`
+        }
+        result += `</div>`
+        
+        // 温度数据
         params.forEach((param: any) => {
           if (param.seriesName === '降雨量') {
-            result += param.marker + param.seriesName + ': ' + param.value + ' mm<br/>'
+            result += `${param.marker} ${param.seriesName}: ${param.value} mm<br/>`
           } else {
-            result += param.marker + param.seriesName + ': ' + param.value + ' °C<br/>'
+            result += `${param.marker} ${param.seriesName}: ${param.value} °C<br/>`
           }
         })
+        
+        // 详细天气信息
+        result += `<div style="margin-top: 8px; color: #666; font-size: 12px; border-top: 1px solid #eee; padding-top: 6px;">`
+        result += `风力: ${weather.windSpeed}km/h ${weather.windDirection}<br/>`
+        result += `云量: ${weather.cloudCover}% · 湿度: ${weather.humidity || 0}%`
+        result += `</div>`
+        
         return result
       }
     },
     legend: {
-      data: props.showCurrent === false ? ['最高', '最低', '降雨量'] : ['最高', '最低', '当前', '降雨量'],
+      data: props.showCurrent === false ? ['最高温度', '最低温度', '降雨量'] : ['最高温度', '最低温度', '当前温度', '降雨量'],
       top: 10,
       left: 'center',
       textStyle: {
         fontSize: 12
       }
     },
-    xAxis: [
-      {
-        type: 'category',
-        data: dates,
-        boundaryGap: false,
-        axisLabel: { color: '#666' },
-        axisLine: { lineStyle: { color: '#ddd' } },
-        gridIndex: 0
+    xAxis: {
+      type: 'category',
+      data: dates,
+      boundaryGap: false,
+      axisLabel: { 
+        color: '#666',
+        formatter: function(value: string) {
+          return value.slice(5) // 显示MM-DD格式
+        }
       },
-      {
-        type: 'category',
-        data: dates,
-        boundaryGap: true,
-        axisLabel: { color: '#666' },
-        axisLine: { lineStyle: { color: '#ddd' } },
-        gridIndex: 1
-      }
-    ],
+      axisLine: { lineStyle: { color: '#ddd' } }
+    },
     yAxis: [
       {
         type: 'value',
         name: '温度 (°C)',
         position: 'left',
         axisLabel: {
-          formatter: '{value} °C',
+          formatter: '{value}°',
           color: '#666'
         },
-        splitLine: { lineStyle: { color: '#eee' } },
-        axisLine: { lineStyle: { color: '#ddd' } },
-        gridIndex: 0
+        splitLine: { lineStyle: { color: '#f0f0f0' } },
+        axisLine: { lineStyle: { color: '#ddd' } }
       },
       {
         type: 'value',
         name: '降雨量 (mm)',
-        position: 'left',
+        position: 'right',
         axisLabel: {
-          formatter: '{value} mm',
+          formatter: '{value}mm',
           color: '#666'
         },
-        splitLine: { lineStyle: { color: '#eee' } },
-        axisLine: { lineStyle: { color: '#ddd' } },
-        gridIndex: 1
+        splitLine: { show: false },
+        axisLine: { lineStyle: { color: '#ddd' } }
       }
     ],
     series: [
       {
-        name: '最高',
+        name: '最高温度',
         type: 'line',
         data: maxArr,
         smooth: true,
         symbol: 'circle',
         showSymbol: true,
-        symbolSize: 8,
-        lineStyle: { width: 2, color: '#d54941' },
-        areaStyle: { color: 'rgba(213,73,65,0.08)' },
-        xAxisIndex: 0,
+        symbolSize: 6,
+        lineStyle: { width: 3, color: '#d54941' },
         yAxisIndex: 0
       },
       {
-        name: '最低',
+        name: '最低温度',
         type: 'line',
         data: minArr,
         smooth: true,
         symbol: 'circle',
         showSymbol: true,
-        symbolSize: 8,
-        lineStyle: { width: 2, color: '#0052d9' },
-        areaStyle: { color: 'rgba(0,82,217,0.08)' },
-        xAxisIndex: 0,
+        symbolSize: 6,
+        lineStyle: { width: 3, color: '#0052d9' },
         yAxisIndex: 0
       },
-      {
-        name: '当前',
+      ...(props.showCurrent !== false ? [{
+        name: '当前温度',
         type: 'line',
         data: curArr,
         smooth: true,
         symbol: 'circle',
         showSymbol: true,
-        symbolSize: 6,
+        symbolSize: 4,
         lineStyle: { width: 2, color: '#2ba471', type: 'dashed' },
-        xAxisIndex: 0,
         yAxisIndex: 0
-      },
+      }] : []),
       {
         name: '降雨量',
         type: 'bar',
         data: precipArr,
-        barWidth: '60%',
-        itemStyle: { color: '#00b42a' },
-        xAxisIndex: 1,
+        barWidth: '30%',
+        itemStyle: { 
+          color: 'rgba(0, 180, 42, 0.6)',
+          borderColor: '#00b42a',
+          borderWidth: 1
+        },
         yAxisIndex: 1
       }
     ] as (LineSeriesOption | BarSeriesOption)[],
-    graphic: icons.map((icon, index) => ({
-      type: 'text',
-      left: `${(index / (dates.length - 1)) * 100}%`,
-      top: '10%',
-      style: {
-        text: icon,
-        fontSize: 16,
-        fill: '#333'
+    // 天气图标和心情图标 - 放在一起显示
+    graphic: dates.map((date, index) => {
+      const totalDates = dates.length
+      const leftPercent = totalDates === 1 ? 50 : (index / (totalDates - 1)) * 100
+      const adjustedLeft = Math.max(8, Math.min(92, leftPercent))
+      const mood = diaryMoods.value[date]
+      const weatherIcon = icons[index]
+      
+      // 组合显示：天气图标在上，心情图标在下
+      const combinedText = mood ? `${weatherIcon}
+${mood}` : weatherIcon
+      
+      return {
+        type: 'text',
+        left: `${adjustedLeft}%`,
+        bottom: 25, // 统一底部定位
+        style: {
+          text: combinedText,
+          fontSize: mood ? 14 : 16, // 有心情时字体稍小
+          fill: '#333',
+          textAlign: 'center',
+          textVerticalAlign: 'middle',
+          lineHeight: mood ? 20 : 16 // 行高调整
+        }
       }
-    }))
+    })
   }
 }
 
-function renderChart() {
+async function renderChart() {
   if (!chartContainer.value) return
   
   // 确保容器有尺寸
@@ -264,6 +227,9 @@ function renderChart() {
     setTimeout(renderChart, 200)
     return
   }
+  
+  // 加载日记心情数据
+  await loadDiaryMoods()
   
   if (!chart) {
     chart = echarts.init(chartContainer.value)
@@ -305,5 +271,3 @@ watch(
   min-height: 200px;
 }
 </style>
-
-

@@ -7,7 +7,7 @@
           <span v-if="headerProvince || headerCity" class="title-location">（{{ headerProvince }}<template v-if="headerProvince && headerCity"> · </template>{{ headerCity }}）</span>
         </h1>
       </div>
-      <div class="header-right">
+      <div class="header-right" :class="{ 'header-right--hidden': !isHeaderRightVisible }">
         <div class="toolbar">
           <t-input
             class="control control--full"
@@ -77,10 +77,18 @@
       </div>
     </div>
 
-    <!-- 日记编辑对话框 -->
-    <WeatherDiary
+    <!-- 日记查看对话框 -->
+    <WeatherDiaryView
       v-if="selectedWeather"
-      v-model:visible="diaryVisible"
+      v-model:visible="diaryViewVisible"
+      :weather="selectedWeather"
+      @edit="handleEditDiary"
+    />
+
+    <!-- 日记编辑对话框 -->
+    <WeatherDiaryEdit
+      v-if="selectedWeather"
+      v-model:visible="diaryEditVisible"
       :weather="selectedWeather"
       @saved="handleDiarySaved"
     />
@@ -88,11 +96,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { DateUtils } from './utils/dateUtils'
 import WeatherCard from './components/WeatherCard.vue'
 import WeatherLineChart from './components/WeatherLineChart.vue'
-import WeatherDiary from './components/WeatherDiary.vue'
+import WeatherDiaryEdit from './components/WeatherDiaryEdit.vue'
+import WeatherDiaryView from './components/WeatherDiaryView.vue'
 import { WeatherApiService } from './services/weatherApi'
 import type { WeatherData } from './types/weather'
 import { GeocodingService } from './services/geocoding'
@@ -118,8 +127,15 @@ const dateRangeValue = ref<[string, string]>([startDate.value, endDate.value])
 const weatherList = ref<WeatherData[]>([])
 
 // 日记相关状态
-const diaryVisible = ref(false)
+const diaryViewVisible = ref(false)
+const diaryEditVisible = ref(false)
 const selectedWeather = ref<WeatherData | null>(null)
+
+// 滚动隐藏header_right相关状态
+const isHeaderRightVisible = ref(true)
+let scrollTimer: number | null = null
+let lastScrollDirection = 0 // 1向下，-1向上，0初始
+let lastScrollY = 0
 
 // 计算标题中显示的城市和省份
 const headerParts = computed(() => {
@@ -261,16 +277,75 @@ function printPage() {
   window.print()
 }
 
-// 处理天气卡片点击
-function handleWeatherCardClick(weather: WeatherData) {
+// 处理天气卡片点击 - 检查是否有日记内容
+async function handleWeatherCardClick(weather: WeatherData) {
   selectedWeather.value = weather
-  diaryVisible.value = true
+  
+  // 检查是否已有日记内容
+  try {
+    const { diaryDb } = await import('./services/diaryDb')
+    const diary = await diaryDb.getDiary(weather.date)
+    
+    if (diary && (diary.content?.trim() || diary.images?.length || diary.video || diary.mood)) {
+      // 有任何内容（文字、图片、视频或心情），显示查看界面
+      diaryViewVisible.value = true
+    } else {
+      // 无内容，直接进入编辑界面
+      diaryEditVisible.value = true
+    }
+  } catch (e) {
+    // 出错时默认进入编辑界面
+    diaryEditVisible.value = true
+  }
+}
+
+// 处理编辑日记
+function handleEditDiary(weather: WeatherData) {
+  selectedWeather.value = weather
+  diaryViewVisible.value = false
+  diaryEditVisible.value = true
 }
 
 // 处理日记保存
 function handleDiarySaved(date: string, content: string) {
   console.log(`日记已保存: ${date}`, content ? '有内容' : '已删除')
   // 可以在这里添加保存成功的提示或其他逻辑
+}
+
+// 滚动处理函数 - 防抖+方向锁定，彻底避免抖动
+function handleScroll() {
+  const currentScrollY = window.scrollY
+  
+  // 清除之前的定时器
+  if (scrollTimer) {
+    clearTimeout(scrollTimer)
+  }
+  
+  // 计算滚动方向
+  const scrollDirection = currentScrollY > lastScrollY ? 1 : -1
+  
+  // 防抖处理，100ms后执行
+  scrollTimer = window.setTimeout(() => {
+    const finalScrollY = window.scrollY
+    
+    // 只有在明确的滚动方向且超过阈值时才改变状态
+    if (finalScrollY > 150) {
+      // 向下滚动超过150px，隐藏
+      if (lastScrollDirection !== 1) {
+        isHeaderRightVisible.value = false
+        lastScrollDirection = 1
+      }
+    } else if (finalScrollY < 50) {
+      // 向上滚动到50px以内，显示
+      if (lastScrollDirection !== -1) {
+        isHeaderRightVisible.value = true
+        lastScrollDirection = -1
+      }
+    }
+    // 在50-150px之间保持当前状态不变
+  }, 100)
+  
+  lastScrollY = currentScrollY
 }
 
 onMounted(async () => {
@@ -298,7 +373,18 @@ onMounted(async () => {
     setSelectedToCurrentLocation(displayAddress.value)
   }
   
+  // 添加滚动监听
+  window.addEventListener('scroll', handleScroll, { passive: true })
+  
   await fetchAll()
+})
+
+onUnmounted(() => {
+  // 移除滚动监听和清理定时器
+  window.removeEventListener('scroll', handleScroll)
+  if (scrollTimer) {
+    clearTimeout(scrollTimer)
+  }
 })
 </script>
 
@@ -313,10 +399,22 @@ onMounted(async () => {
   position: sticky;
   top: 0;
   z-index: 100;
+  overflow: hidden;
 }
 .header-left h1 {
   font-size: 18px;
   margin: 0;
+}
+.header-right {
+  display: block;
+  overflow: hidden;
+  transition: none !important;
+}
+.header-right--hidden {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  transition: none !important;
 }
 .title-location {
   font-size: 14px;
