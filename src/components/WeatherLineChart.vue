@@ -48,8 +48,8 @@ async function loadDiaryMoods() {
     diaryData.value = dataMap
     
     // 调试信息：显示当前加载的心情数据
-    const currentDates = props.data?.map(d => d.date) || []
-    const moodsForCurrentDates = currentDates.filter(date => moodMap[date])
+    // const currentDates = props.data?.map(d => d.date) || []
+    // const moodsForCurrentDates = currentDates.filter(date => moodMap[date])
     // console.log('图表日期范围:', currentDates)
     // console.log('有心情数据的日期:', moodsForCurrentDates)
     // console.log('心情数据映射:', Object.keys(moodMap).length, '条记录')
@@ -578,7 +578,7 @@ function handleResize() {
 }
 
 // 处理日记更新事件
-async function handleDiaryUpdate(event: any) {
+async function handleDiaryUpdate(_event: any) {
   // console.log('图表接收到日记更新事件:', event.detail)
   // 重新加载日记数据并更新图表
   await loadDiaryMoods()

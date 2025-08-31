@@ -341,7 +341,11 @@ async function preloadDiariesOverview(startDate: string, endDate: string) {
 
 // 处理天气卡片点击 - 优化版本，减少数据库请求
 async function handleWeatherCardClick(weather: WeatherData) {
+  // 先设置选中的天气数据
   selectedWeather.value = weather
+  
+  // 等待一个微任务，确保 selectedWeather 已经传递给子组件
+  await new Promise(resolve => setTimeout(resolve, 0))
   
   // 先检查缓存
   if (diaryCache.value.has(weather.date)) {

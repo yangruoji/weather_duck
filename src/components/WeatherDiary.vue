@@ -114,11 +114,23 @@ const date = computed(() => {
 
 // 监听对话框打开，加载已有日记
 watch(() => props.visible, async (newVisible, oldVisible) => {
-  console.log('visible 变化:', oldVisible, '->', newVisible, 'weather.date:', props.weather?.date)
+  console.log('🔍 visible 变化:', oldVisible, '->', newVisible, 'weather.date:', props.weather?.date)
+  console.log('🔍 完整 weather 对象:', props.weather)
+  
   if (newVisible) {
-    console.log('对话框打开，开始加载日记')
+    console.log('🚀 对话框打开，立即开始加载日记')
     isLoading.value = true
-    await loadDiary()
+    
+    // 强制等待一个微任务，确保组件完全渲染
+    await new Promise(resolve => setTimeout(resolve, 0))
+    
+    if (props.weather?.date) {
+      console.log('🔍 调用 loadDiary，日期:', props.weather.date)
+      await loadDiary()
+    } else {
+      console.log('❌ weather.date 不存在，无法加载日记')
+    }
+    
     isLoading.value = false
   } else {
     console.log('对话框关闭，清空数据')
@@ -152,7 +164,12 @@ watch(() => props.weather?.date, async (newDate, oldDate) => {
 
 // 从数据库加载日记
 async function loadDiary() {
+  console.log('🔍 loadDiary 被调用')
+  console.log('🔍 props.weather:', props.weather)
+  console.log('🔍 props.weather?.date:', props.weather?.date)
+  
   if (!props.weather || !props.weather.date) {
+    console.log('❌ 没有天气数据或日期，清空状态')
     savedContent.value = ''
     diaryText.value = ''
     imageData.value = ''
@@ -160,17 +177,24 @@ async function loadDiary() {
     imageDirty.value = false
     return
   }
+  
   try {
-    console.log('正在加载日记:', props.weather.date)
+    console.log('🚀 开始调用 OptimizedSupabaseDiaryService.getDiary，日期:', props.weather.date)
+    
+    // 强制调用服务
     const diary = await OptimizedSupabaseDiaryService.getDiary(props.weather.date)
-    console.log('加载到的日记:', diary)
+    
+    console.log('📦 服务返回的日记数据:', diary)
+    
     if (diary) {
+      console.log('✅ 找到日记，设置内容')
       savedContent.value = diary.content || ''
       diaryText.value = diary.content || ''
       imageData.value = diary.images?.[0] || ''
       imageList.value = diary.images || []
       imageDirty.value = false
     } else {
+      console.log('📝 没有找到日记，设置为空状态')
       savedContent.value = ''
       diaryText.value = ''
       imageData.value = ''
@@ -178,7 +202,7 @@ async function loadDiary() {
       imageDirty.value = false
     }
   } catch (e) {
-    console.warn('加载日记失败:', e)
+    console.error('💥 加载日记失败:', e)
     savedContent.value = ''
     diaryText.value = ''
     imageData.value = ''

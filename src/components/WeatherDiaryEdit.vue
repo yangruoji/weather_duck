@@ -274,13 +274,27 @@ const date = computed(() => {
 // const uploadAction = 'data:' // 使用data URL，不实际上传到服务器
 
 // 监听对话框打开，加载已有日记
-watch(() => props.visible, async (newVisible) => {
-  if (newVisible) {
-    await loadDiary()
-  } else {
+watch(() => props.visible, async (newVisible, oldVisible) => {
+  // 只有当 visible 真正变为 true 时才加载日记
+  if (newVisible === true && oldVisible !== true) {
+    // 强制等待一个微任务，确保组件完全渲染
+    await new Promise(resolve => setTimeout(resolve, 10))
+    
+    if (props.weather?.date) {
+      await loadDiary()
+    }
+  } else if (newVisible === false) {
     resetForm()
   }
 })
+
+// 添加一个专门监听 weather 变化的 watcher
+watch(() => props.weather, async (newWeather, oldWeather) => {
+  // 如果对话框已经打开且 weather 数据发生变化，重新加载
+  if (props.visible && newWeather?.date && newWeather.date !== oldWeather?.date) {
+    await loadDiary()
+  }
+}, { deep: true })
 
 // 重置表单
 function resetForm() {
@@ -303,6 +317,7 @@ async function loadDiary() {
   
   try {
     const diary = await OptimizedSupabaseDiaryService.getDiary(props.weather.date)
+    
     if (diary) {
       hasExistingDiary.value = true
       cityLocation.value = diary.city || ''
