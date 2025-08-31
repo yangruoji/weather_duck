@@ -24,15 +24,17 @@
 
       <!-- 日记信息 -->
       <div class="diary-info">
-        <div class="info-row" v-if="diaryData.city">
-          <span class="info-label">📍 位置：</span>
-          <span class="info-value">{{ diaryData.city }}</span>
-        </div>
-        <div class="info-row" v-if="diaryData.mood">
-          <span class="info-label">😊 心情：</span>
-          <span class="info-value">
-            {{ getMoodIcon(diaryData.mood) }} {{ diaryData.mood }}
-          </span>
+        <div class="info-row-combined" v-if="diaryData.city || diaryData.mood">
+          <div class="info-item" v-if="diaryData.mood">
+            <span class="info-label">心情：</span>
+            <span class="info-value">
+              {{ getMoodIcon(diaryData.mood) }} {{ diaryData.mood }}
+            </span>
+          </div>
+          <div class="info-item" v-if="diaryData.city">
+            <span class="info-label">📍 位置：</span>
+            <span class="info-value">{{ diaryData.city }}</span>
+          </div>
         </div>
       </div>
 
@@ -224,6 +226,20 @@ function handleVisibleChange(value: boolean) {
   align-items: center;
   margin-bottom: 12px;
   font-size: 16px;
+}
+
+.info-row-combined {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  font-size: 16px;
+}
+
+.info-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .info-label {

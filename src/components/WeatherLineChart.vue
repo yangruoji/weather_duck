@@ -15,27 +15,36 @@ interface Props {
   showCurrent?: boolean
 }
 
+interface Emits {
+  (e: 'cardClick', weather: WeatherData): void
+}
+
 const props = defineProps<Props>()
+const emit = defineEmits<Emits>()
 
 const chartContainer = ref<HTMLDivElement | null>(null)
 let chart: TECharts | null = null
 
-// 日记心情数据
+// 日记数据
 const diaryMoods = ref<Record<string, string>>({})
+const diaryData = ref<Record<string, any>>({})
 
-// 获取日记心情数据
+// 获取日记数据
 async function loadDiaryMoods() {
   try {
     const diaries = await diaryDb.getAllDiaries()
     const moodMap: Record<string, string> = {}
+    const dataMap: Record<string, any> = {}
     diaries.forEach(diary => {
       if (diary.mood) {
         moodMap[diary.date] = diary.mood
       }
+      dataMap[diary.date] = diary
     })
     diaryMoods.value = moodMap
+    diaryData.value = dataMap
   } catch (error) {
-    console.error('加载日记心情失败:', error)
+    console.error('加载日记数据失败:', error)
   }
 }
 
@@ -56,8 +65,8 @@ function getOption(list: WeatherData[]): EChartsOption {
     grid: {
       left: 60,
       right: 60, 
-      top: 80,
-      bottom: 60
+      top: 100,
+      bottom: 80
     },
     tooltip: {
       trigger: 'axis',
@@ -75,10 +84,12 @@ function getOption(list: WeatherData[]): EChartsOption {
         result += `<span style="font-size: 18px;">${icons[dataIndex]}</span>`
         result += `<span style="font-weight: 500;">${weather.description}</span>`
         if (mood) {
-          result += `<span style="font-size: 16px; margin-left: 8px;">${mood}</span>`
+          result += `<span style="font-size: 16px; margin-left: 8px;">${getMoodEmoji(mood)}</span>`
         }
         result += `</div>`
         
+        result += `<div style="margin-top: 8px; color: #666; font-size: 12px; border-top: 1px solid #eee; padding-top: 6px;">`
+
         // 温度数据
         params.forEach((param: any) => {
           if (param.seriesName === '降雨量') {
@@ -87,19 +98,55 @@ function getOption(list: WeatherData[]): EChartsOption {
             result += `${param.marker} ${param.seriesName}: ${param.value} °C<br/>`
           }
         })
-        
+        result += `</div>`
+
         // 详细天气信息
         result += `<div style="margin-top: 8px; color: #666; font-size: 12px; border-top: 1px solid #eee; padding-top: 6px;">`
         result += `风力: ${weather.windSpeed}km/h ${weather.windDirection}<br/>`
         result += `云量: ${weather.cloudCover}% · 湿度: ${weather.humidity || 0}%`
-        result += `</div>`
+
+
+        // 日记详细信息
+        const diary = diaryData.value[date]
+        if (diary) {
+          result += `<div style="margin-top: 8px; padding-top: 6px; border-top: 1px solid #eee;">`
+          // result += `<div style="font-weight: bold; color: #333; margin-bottom: 4px;">📝 日记信息</div>`
+          
+          if (diary.city) {
+            result += `<div style="margin: 2px 0; font-size: 12px;">📍 ${diary.city}</div>`
+          }
+          
+          if (diary.mood) {
+            result += `<div style="margin: 2px 0; font-size: 12px;">${getMoodEmoji(diary.mood)} ${diary.mood}</div>`
+          }
+          
+          if (diary.content) {
+            const preview = diary.content.length > 50 ? diary.content.substring(0, 50) + '...' : diary.content
+            result += `<div style="margin: 2px 0; font-size: 14px; color: #006;">${preview}</div>`
+          }
+          
+          if (diary.images && diary.images.length > 0) {
+            const firstImage = diary.images[0]
+            result += `<div style="margin: 6px 0;">
+              <img src="${firstImage}" style="width: 100px; height: 60px; object-fit: cover; border-radius: 6px; display: block; border: 1px solid #eee;" />
+            </div>`
+          }
+          
+          if (diary.videos && diary.videos.length > 0) {
+            result += `<div style="margin: 2px 0; font-size: 12px; color: #999;">🎥 视频</div>`
+          }
+          
+          result += `</div>`
+        }
+        
+         result += `</div>`
         
         return result
       }
     },
     legend: {
       data: props.showCurrent === false ? ['最高温度', '最低温度', '降雨量'] : ['最高温度', '最低温度', '当前温度', '降雨量'],
-      top: 10,
+      bottom: 10,
       left: 'center',
       textStyle: {
         fontSize: 12
@@ -188,32 +235,69 @@ function getOption(list: WeatherData[]): EChartsOption {
         yAxisIndex: 1
       }
     ] as (LineSeriesOption | BarSeriesOption)[],
-    // 天气图标和心情图标 - 放在一起显示
-    graphic: dates.map((date, index) => {
-      const totalDates = dates.length
-      const leftPercent = totalDates === 1 ? 50 : (index / (totalDates - 1)) * 100
-      const adjustedLeft = Math.max(8, Math.min(92, leftPercent))
-      const mood = diaryMoods.value[date]
-      const weatherIcon = icons[index]
-      
-      // 组合显示：天气图标在上，心情图标在下
-      const combinedText = mood ? `${weatherIcon}
-${mood}` : weatherIcon
-      
-      return {
-        type: 'text',
-        left: `${adjustedLeft}%`,
-        bottom: 25, // 统一底部定位
-        style: {
-          text: combinedText,
-          fontSize: mood ? 14 : 16, // 有心情时字体稍小
-          fill: '#333',
-          textAlign: 'center',
-          textVerticalAlign: 'middle',
-          lineHeight: mood ? 20 : 16 // 行高调整
+    // 天气图标和心情图标 - 显示在曲线上方，对应x轴日期
+    graphic: [
+      // 天气图标 - 曲线上方
+      ...dates.map((date, index) => {
+        const totalDates = dates.length
+        const leftPercent = totalDates === 1 ? 50 : (index / (totalDates - 1)) * 100
+        const adjustedLeft = Math.max(8, Math.min(92, leftPercent))
+        const weatherIcon = icons[index]
+        
+        return {
+          type: 'text',
+          left: `${adjustedLeft}%`,
+          top: '8%', // 移到更上方，避免与曲线重叠
+          style: {
+            text: weatherIcon,
+            fontSize: 20,
+            fill: '#333',
+            textAlign: 'center',
+            textVerticalAlign: 'middle',
+            textShadowColor: 'rgba(255,255,255,0.8)',
+            textShadowBlur: 2
+          },
+          onclick: () => {
+            const weather = list[index]
+            emit('cardClick', weather)
+          },
+          cursor: 'pointer'
         }
-      }
-    })
+      }),
+      // 心情图标 - 天气图标上方（只显示图标，不显示文字）
+      ...dates.map((date, index) => {
+        const mood = diaryMoods.value[date]
+        if (!mood) return null
+        
+        // 获取心情对应的emoji
+        const moodEmoji = getMoodEmoji(mood)
+        if (!moodEmoji) return null
+        
+        const totalDates = dates.length
+        const leftPercent = totalDates === 1 ? 50 : (index / (totalDates - 1)) * 100
+        const adjustedLeft = Math.max(8, Math.min(92, leftPercent))
+        
+        return {
+          type: 'text',
+          left: `${adjustedLeft}%`,
+          top: '2%', // 在天气图标上方，更靠近顶部
+          style: {
+            text: moodEmoji,
+            fontSize: 16,
+            fill: '#666',
+            textAlign: 'center',
+            textVerticalAlign: 'middle',
+            textShadowColor: 'rgba(255,255,255,0.8)',
+            textShadowBlur: 2
+          },
+          onclick: () => {
+            const weather = list[index]
+            emit('cardClick', weather)
+          },
+          cursor: 'pointer'
+        }
+      }).filter((item): item is NonNullable<typeof item> => item !== null)
+    ]
   }
 }
 
@@ -255,6 +339,21 @@ onBeforeUnmount(() => {
   chart?.dispose()
   chart = null
 })
+
+// 获取心情emoji（用于图表显示）
+function getMoodEmoji(mood: string): string {
+  const moodMap: Record<string, string> = {
+    '开心': '😊',
+    '愉快': '😄',
+    '平静': '😌',
+    '兴奋': '🤩',
+    '放松': '😎',
+    '忧郁': '😔',
+    '烦躁': '😤',
+    '疲惫': '😴'
+  }
+  return moodMap[mood] || '😊'
+}
 
 watch(
   () => [props.data, props.showCurrent, props.height],

@@ -66,7 +66,7 @@
       <div class="section-divider"></div>
       <div class="chart-container">
         <h2 class="chart-title">天气趋势图表</h2>
-        <WeatherLineChart :data="weatherList" :height="400" />
+        <WeatherLineChart :data="weatherList" :height="400" @card-click="handleWeatherCardClick" />
       </div>
     </div>
 

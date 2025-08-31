@@ -46,9 +46,16 @@
       <div class="diary-preview" v-if="diaryData && (diaryData.mood || getFirstImage(diaryData) || diaryData.content)">
         <!-- 心情优先显示 -->
         <!-- 1. 心情优先显示 -->
-        <div class="diary-mood" v-if="diaryData.mood">
-          <span class="mood-icon">{{ getMoodIcon(diaryData.mood) }}</span>
-          <span class="mood-text">{{ diaryData.mood }}</span>
+        <!-- 心情和城市信息在一行 -->
+        <div class="diary-info-row" v-if="diaryData.mood || diaryData.city">
+          <div class="diary-mood" v-if="diaryData.mood">
+            <span class="mood-icon">{{ getMoodIcon(diaryData.mood) }}</span>
+            <span class="mood-text">{{ diaryData.mood }}</span>
+          </div>
+          <div class="diary-city" v-if="diaryData.city">
+            <span class="city-icon">📍</span>
+            <span class="city-text">{{ diaryData.city }}</span>
+          </div>
         </div>
         <!-- 2. 图片第二显示 -->
         <div class="diary-image" v-if="getFirstImage(diaryData)">
@@ -294,6 +301,30 @@ function handleCardClick() {
   height: 80px;
   object-fit: cover;
   border-radius: 6px;
+}
+
+.diary-info-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.diary-city {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.city-icon {
+  font-size: 12px;
+  color: #1890ff;
+}
+
+.city-text {
+  font-size: 11px;
+  color: #1890ff;
+  font-weight: 500;
 }
 
 .diary-mood {

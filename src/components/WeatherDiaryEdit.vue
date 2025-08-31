@@ -74,7 +74,12 @@
           :max="9"
           theme="image"
           :show-image-file-name="true"
-          :image-viewer-props="{ trigger: 'hover' }"
+          :image-viewer-props="{ 
+            trigger: 'click',
+            closeOnClickModal: true,
+            showArrow: true,
+            showIndex: true
+          }"
           tips="支持上传jpg、png格式图片，单张不超过5MB，最多9张"
         />
       </div>
@@ -88,9 +93,29 @@
           :auto-upload="false"
           accept="video/*"
           :max="1"
-          theme="image"
+          theme="file"
+          :show-upload-progress="true"
           tips="支持上传mp4、mov格式视频，不超过50MB"
         />
+        
+        <!-- 视频预览播放器 -->
+        <div v-if="videoFiles.length > 0" class="video-preview">
+          <div v-for="(video, index) in videoFiles" :key="index" class="video-item">
+            <video 
+              v-if="video.url"
+              :src="video.url" 
+              controls 
+              preload="metadata"
+              style="width: 100%; max-height: 300px; border-radius: 6px; margin-bottom: 8px;"
+            >
+              您的浏览器不支持视频播放
+            </video>
+            <div v-else class="video-loading">
+              <t-loading size="small" />
+              <span style="margin-left: 8px;">视频处理中...</span>
+            </div>
+          </div>
+        </div>
       </div>
       
       <!-- 操作按钮 -->
@@ -243,13 +268,14 @@ function beforeUpload(file: any) {
     return false
   }
   
-  // 同步转换为base64
+  // 同步转换为base64并设置预览URL
   const reader = new FileReader()
   reader.onload = (e) => {
     if (e.target && e.target.result) {
       file.url = e.target.result
-      // 手动触发上传成功状态
       file.status = 'success'
+      // 强制更新视频文件列表以触发预览显示
+      videoFiles.value = [...videoFiles.value]
     }
   }
   reader.readAsDataURL(actualFile)
@@ -287,13 +313,14 @@ function beforeVideoUpload(file: any) {
     return false
   }
   
-  // 同步转换为base64
+  // 同步转换为base64并设置预览URL
   const reader = new FileReader()
   reader.onload = (e) => {
     if (e.target && e.target.result) {
       file.url = e.target.result
-      // 手动触发上传成功状态
       file.status = 'success'
+      // 强制更新视频文件列表以触发预览显示
+      videoFiles.value = [...videoFiles.value]
     }
   }
   reader.readAsDataURL(actualFile)
@@ -487,6 +514,23 @@ function handleVisibleChange(value: boolean) {
   background: #f8f9fa;
   border-radius: 8px;
   border: 1px solid #e0e0e0;
+}
+
+.video-item {
+  margin-bottom: 8px;
+}
+
+.video-item:last-child {
+  margin-bottom: 0;
+}
+
+.video-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  color: #666;
+  font-size: 14px;
 }
 
 .diary-actions {
