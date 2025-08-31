@@ -156,8 +156,9 @@ export class SupabaseDiaryService {
     try {
       const { data, error } = await supabase!
         .from('weather_diaries')
-        .select('*')
+        .select('id, date, content, mood, city, weather_data, images, video, created_at, updated_at')
         .order('date', { ascending: false })
+        .limit(50)
 
       if (error) {
         console.error('获取所有日记失�?', error)

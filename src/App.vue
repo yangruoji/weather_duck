@@ -127,6 +127,7 @@ import WeatherDiaryEdit from './components/WeatherDiaryEdit.vue'
 import WeatherDiaryView from './components/WeatherDiaryView.vue'
 import AboutDialog from './components/AboutDialog.vue'
 import { WeatherApiService } from './services/weatherApi'
+import { OptimizedDiaryService } from './services/optimizedDiary'
 import type { WeatherData } from './types/weather'
 import { GeocodingService } from './services/geocoding'
 import { initializeSupabase } from './utils/initSupabase'
@@ -262,13 +263,19 @@ async function fetchAll() {
   }
   loading.value = true
   try {
-    const data = await WeatherApiService.getHistoricalWeather(
-      latitude.value,
-      longitude.value,
-      startDate.value,
-      endDate.value
-    )
-    weatherList.value = data
+    // 优化：使用批量请求而不是单个请求
+    const [weatherData] = await Promise.all([
+      WeatherApiService.getHistoricalWeather(
+        latitude.value,
+        longitude.value,
+        startDate.value,
+        endDate.value
+      )
+    ])
+    weatherList.value = weatherData
+
+    // 批量预加载日记概览（异步，不阻塞UI）
+    await preloadDiariesOverview(startDate.value, endDate.value)
 
     const today = new Date().toISOString().slice(0, 10)
     try {
@@ -305,25 +312,51 @@ function printPage() {
   window.print()
 }
 
-// 处理天气卡片点击 - 检查是否有日记内容
+// 日记缓存，避免重复请求
+const diaryCache = ref<Map<string, any>>(new Map())
+
+// 批量预加载日记概览
+async function preloadDiariesOverview(startDate: string, endDate: string) {
+  try {
+    const { OptimizedDiaryService } = await import('./services/optimizedDiary')
+    const diaries = await OptimizedDiaryService.getDiariesByDateRange(startDate, endDate)
+    
+    // 将结果存入缓存
+    diaries.forEach(diary => {
+      if (diary.date) {
+        diaryCache.value.set(diary.date, diary)
+      }
+    })
+  } catch (error) {
+    console.warn('预加载日记概览失败:', error)
+  }
+}
+
+// 处理天气卡片点击 - 优化版本，减少数据库请求
 async function handleWeatherCardClick(weather: WeatherData) {
   selectedWeather.value = weather
   
-  // 检查是否已有日记内容
-  try {
-    const { SupabaseDiaryService } = await import('./services/supabaseDiary')
-    const diary = await SupabaseDiaryService.getDiary(weather.date)
-    
-    if (diary && (diary.content?.trim() || diary.images?.length || diary.video || diary.mood)) {
-      // 有任何内容（文字、图片、视频或心情），显示查看界面
+  // 先检查缓存
+  if (diaryCache.value.has(weather.date)) {
+    const cachedDiary = diaryCache.value.get(weather.date)
+    if (cachedDiary && (cachedDiary.content?.trim() || cachedDiary.images?.length || cachedDiary.video || cachedDiary.mood)) {
       diaryViewVisible.value = true
     } else {
-      // 无内容，直接进入编辑界面
       diaryEditVisible.value = true
     }
+    return
+  }
+  
+  // 如果缓存中没有，则异步加载但不阻塞UI
+  diaryEditVisible.value = true // 默认进入编辑界面，提供更好的用户体验
+  
+  // 后台异步检查日记内容
+  try {
+    const { OptimizedDiaryService } = await import('./services/optimizedDiary')
+    const diary = await OptimizedDiaryService.getDiaryDetail(weather.date)
+    diaryCache.value.set(weather.date, diary)
   } catch (e) {
-    // 出错时默认进入编辑界面
-    diaryEditVisible.value = true
+    console.warn('后台加载日记失败:', e)
   }
 }
 

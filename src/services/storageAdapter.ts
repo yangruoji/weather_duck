@@ -84,9 +84,9 @@ export class StorageAdapter {
   }
 
   /**
-   * 获取所有日记
+   * 获取所有日记（优化版本）
    */
-  static async getAllDiaries(): Promise<WeatherDiary[]> {
+  static async getAllDiaries(_limit: number = 50, _offset: number = 0): Promise<WeatherDiary[]> {
     if (isSupabaseEnabled && supabase) {
       try {
         return await SupabaseDiaryService.getAllDiaries()
