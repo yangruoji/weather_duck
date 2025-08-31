@@ -177,14 +177,7 @@ export class OptimizedStorageAdapter {
   /**
    * 文件转Base64 - 本地存储使用
    */
-  private static fileToBase64(file: File): Promise<string> {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader()
-      reader.onload = () => resolve(reader.result as string)
-      reader.onerror = reject
-      reader.readAsDataURL(file)
-    })
-  }
+  // 已删除未使用的 _fileToBase64 方法
 
   /**
    * 批量删除日记

@@ -167,7 +167,7 @@ onMounted(() => {
 
 function handleDiarySaved(event: Event) {
   const customEvent = event as CustomEvent
-  const { date } = customEvent.detail
+  const { date: _date } = customEvent.detail
   // 重新加载当前月份的数据
   loadMonthDiaries()
 }

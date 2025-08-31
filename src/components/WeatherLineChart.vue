@@ -50,9 +50,9 @@ async function loadDiaryMoods() {
     // 调试信息：显示当前加载的心情数据
     const currentDates = props.data?.map(d => d.date) || []
     const moodsForCurrentDates = currentDates.filter(date => moodMap[date])
-    console.log('图表日期范围:', currentDates)
-    console.log('有心情数据的日期:', moodsForCurrentDates)
-    console.log('心情数据映射:', Object.keys(moodMap).length, '条记录')
+    // console.log('图表日期范围:', currentDates)
+    // console.log('有心情数据的日期:', moodsForCurrentDates)
+    // console.log('心情数据映射:', Object.keys(moodMap).length, '条记录')
   } catch (error) {
     console.error('加载日记数据失败:', error)
   }
@@ -126,7 +126,7 @@ function getOption(list: WeatherData[]): EChartsOption {
         result += `<div style="margin-top: 8px; color: #666; font-size: 12px; border-top: 1px solid #eee; padding-top: 6px;">`
         result += `风力: ${weather.windSpeed}km/h ${weather.windDirection}<br/>`
         result += `云量: ${weather.cloudCover}% · 湿度: ${weather.humidity || 0}%<br/>`
-        result += `<div style="margin-top: 6px; padding: 4px 8px; background: #f0f9ff; border-radius: 4px; color: #0369a1; font-size: 11px; text-align: center;">💡 点击图表打开 ${date} 日记</div>`
+        // result += `<div style="margin-top: 6px; padding: 4px 8px; background: #f0f9ff; border-radius: 4px; color: #0369a1; font-size: 11px; text-align: center;">💡 点击图表打开 ${date} 日记</div>`
 
         // 日记详细信息
         const diary = diaryData.value[date]
@@ -479,17 +479,17 @@ function getOption(list: WeatherData[]): EChartsOption {
       ...list.map((weather, index) => {
         const mood = diaryMoods.value[weather.date]
         if (!mood) {
-          console.log(`日期 ${weather.date} 没有心情数据`)
+          // console.log(`日期 ${weather.date} 没有心情数据`)
           return null
         }
         
         const moodEmoji = getMoodEmoji(mood)
         if (!moodEmoji) {
-          console.log(`心情 "${mood}" 没有对应的emoji`)
+          // console.log(`心情 "${mood}" 没有对应的emoji`)
           return null
         }
         
-        console.log(`为日期 ${weather.date} 生成心情图标: ${moodEmoji} (${mood})`)
+        // console.log(`为日期 ${weather.date} 生成心情图标: ${moodEmoji} (${mood})`)
         
         // 使用与天气图标相同的位置计算逻辑
         const totalPoints = list.length
@@ -579,7 +579,7 @@ function handleResize() {
 
 // 处理日记更新事件
 async function handleDiaryUpdate(event: any) {
-  console.log('图表接收到日记更新事件:', event.detail)
+  // console.log('图表接收到日记更新事件:', event.detail)
   // 重新加载日记数据并更新图表
   await loadDiaryMoods()
   if (chart) {
@@ -707,7 +707,7 @@ onBeforeUnmount(() => {
 watch(
   () => [props.data, props.showCurrent, props.height],
   async () => {
-    console.log('图表数据变化，重新渲染:', props.data?.length, '个数据点')
+    // console.log('图表数据变化，重新渲染:', props.data?.length, '个数据点')
     await renderChart()
   },
   { deep: true, immediate: false }
@@ -718,7 +718,7 @@ watch(
   () => props.data,
   async (newData, oldData) => {
     if (newData && oldData && newData.length !== oldData.length) {
-      console.log('数据点数量变化:', oldData.length, '->', newData.length)
+      // console.log('数据点数量变化:', oldData.length, '->', newData.length)
       // 数据点数量变化时，强制重新渲染
       await renderChart()
     } else if (newData && oldData) {
@@ -729,7 +729,7 @@ watch(
                           newDates.some((date, index) => date !== oldDates[index])
       
       if (datesChanged) {
-        console.log('日期范围变化，重新渲染图表')
+        // console.log('日期范围变化，重新渲染图表')
         await renderChart()
       }
     }

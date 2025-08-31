@@ -76,7 +76,7 @@
           />
           <t-button
             variant="outline"
-            @click="$refs.imageInput?.click()"
+            @click="($refs.imageInput as HTMLInputElement)?.click()"
             :disabled="selectedImages.length >= 9"
           >
             <template #icon><t-icon name="add" /></template>
@@ -128,7 +128,7 @@
           />
           <t-button
             variant="outline"
-            @click="$refs.videoInput?.click()"
+            @click="($refs.videoInput as HTMLInputElement)?.click()"
             :disabled="selectedVideos.length >= 5"
           >
             <template #icon><t-icon name="add" /></template>
@@ -209,7 +209,7 @@ import { WeatherData } from '../types/weather'
 import { DateUtils } from '../utils/dateUtils'
 import { SupabaseStorageService } from '../services/supabaseStorage'
 import { OptimizedSupabaseDiaryService } from '../services/optimizedSupabaseDiary'
-import type { WeatherDiary } from '../config/supabase'
+// import type { WeatherDiary } from '../config/supabase'
 
 interface Props {
   visible: boolean
@@ -271,7 +271,7 @@ const date = computed(() => {
 })
 
 // 上传配置
-const uploadAction = 'data:' // 使用data URL，不实际上传到服务器
+// const uploadAction = 'data:' // 使用data URL，不实际上传到服务器
 
 // 监听对话框打开，加载已有日记
 watch(() => props.visible, async (newVisible) => {

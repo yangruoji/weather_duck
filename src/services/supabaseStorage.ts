@@ -13,7 +13,7 @@ export class SupabaseStorageService {
     file: File, 
     fileName?: string, 
     userId?: string,
-    onProgress?: (progress: number) => void
+    _onProgress?: (progress: number) => void
   ): Promise<string> {
     try {
       const fileExt = file.name.split('.').pop()
@@ -87,7 +87,7 @@ export class SupabaseStorageService {
     file: File, 
     fileName?: string, 
     userId?: string,
-    onProgress?: (progress: number) => void
+    _onProgress?: (progress: number) => void
   ): Promise<string> {
     try {
       const fileExt = file.name.split('.').pop()

@@ -51,7 +51,7 @@ export class SupabaseDiaryService {
             mood: diary.mood,
             city: diary.city,
             images: diary.images,
-            video: diary.video
+            videos: diary.videos || []
           })
           .eq('date', diary.date)
           .select()
@@ -98,8 +98,8 @@ export class SupabaseDiaryService {
         if (diary.images) {
           filesToDelete.push(...diary.images)
         }
-        if (diary.video) {
-          filesToDelete.push(diary.video)
+        if (diary.videos && diary.videos.length > 0) {
+          filesToDelete.push(...diary.videos)
         }
         
         if (filesToDelete.length > 0) {

@@ -76,7 +76,7 @@
           />
           <t-button
             variant="outline"
-            @click="$refs.imageInput?.click()"
+            @click="($refs.imageInput as HTMLInputElement)?.click()"
             :disabled="selectedImages.length >= 9"
           >
             <template #icon><t-icon name="add" /></template>
@@ -128,7 +128,7 @@
           />
           <t-button
             variant="outline"
-            @click="$refs.videoInput?.click()"
+            @click="($refs.videoInput as HTMLInputElement)?.click()"
             :disabled="selectedVideos.length >= 5"
           >
             <template #icon><t-icon name="add" /></template>
@@ -207,9 +207,9 @@
 import { ref, watch, computed } from 'vue'
 import { WeatherData } from '../types/weather'
 import { DateUtils } from '../utils/dateUtils'
-import { supabaseStorage } from '../services/supabaseStorage'
-import { optimizedSupabaseDiary } from '../services/optimizedSupabaseDiary'
-import type { WeatherDiary } from '../config/supabase'
+import { SupabaseStorageService } from '../services/supabaseStorage'
+import { OptimizedSupabaseDiaryService } from '../services/optimizedSupabaseDiary'
+// import type { WeatherDiary } from '../config/supabase'
 
 interface Props {
   visible: boolean
@@ -299,7 +299,7 @@ async function loadDiary() {
   }
   
   try {
-    const diary = await optimizedSupabaseDiary.getDiary(props.weather.date)
+    const diary = await OptimizedSupabaseDiaryService.getDiary(props.weather.date)
     if (diary) {
       hasExistingDiary.value = true
       cityLocation.value = diary.city || ''
@@ -308,7 +308,7 @@ async function loadDiary() {
       
       // 加载已有的图片
       if (diary.images && diary.images.length > 0) {
-        selectedImages.value = diary.images.map((url, index) => ({
+        selectedImages.value = diary.images.map((url: string, index: number) => ({
           file: new File([], `image-${index}.jpg`),
           preview: url,
           uploading: false,
@@ -319,7 +319,7 @@ async function loadDiary() {
       
       // 加载已有的视频
       if (diary.videos && diary.videos.length > 0) {
-        selectedVideos.value = diary.videos.map((url, index) => ({
+        selectedVideos.value = diary.videos.map((url: string, index: number) => ({
           file: new File([], `video-${index}.mp4`),
           preview: url,
           uploading: false,
@@ -441,9 +441,14 @@ async function handleSave() {
         image.uploading = true
         
         try {
-          const url = await supabaseStorage.uploadImage(image.file, (progress) => {
-            image.progress = progress
-          })
+          const url = await SupabaseStorageService.uploadImage(
+            image.file, 
+            undefined, 
+            undefined, 
+            (progress: number) => {
+              image.progress = progress
+            }
+          )
           
           image.url = url
           imageUrls.push(url)
@@ -476,9 +481,14 @@ async function handleSave() {
         video.uploading = true
         
         try {
-          const url = await supabaseStorage.uploadVideo(video.file, (progress) => {
-            video.progress = progress
-          })
+          const url = await SupabaseStorageService.uploadVideo(
+            video.file, 
+            undefined, 
+            undefined, 
+            (progress: number) => {
+              video.progress = progress
+            }
+          )
           
           video.url = url
           videoUrls.push(url)
@@ -496,7 +506,7 @@ async function handleSave() {
     // 保存日记到数据库
     saveProgressText.value = '正在保存日记...'
     
-    await optimizedSupabaseDiary.createDiary({
+    await OptimizedSupabaseDiaryService.saveDiary({
       date: props.weather.date,
       content: diaryText.value.trim(),
       weather_data: props.weather,
@@ -534,7 +544,7 @@ async function handleDelete() {
   if (!props.weather || !props.weather.date) return
   
   try {
-    await optimizedSupabaseDiary.deleteDiary(props.weather.date)
+    await OptimizedSupabaseDiaryService.deleteDiary(props.weather.date)
     emit('saved', props.weather.date, '')
     
     // 通知全局刷新

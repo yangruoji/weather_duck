@@ -12,7 +12,7 @@ if (!supabaseUrl || !supabaseAnonKey ||
   console.warn('请在.env文件中配置VITE_SUPABASE_URL和VITE_SUPABASE_ANON_KEY')
   console.warn('当前配置:', { supabaseUrl, supabaseAnonKey: supabaseAnonKey ? '已设置' : '未设置' })
 } else {
-  console.log('✅ Supabase配置已完成')
+  // console.log('✅ Supabase配置已完成')
 }
 
 export const supabase = supabaseUrl && supabaseAnonKey && 

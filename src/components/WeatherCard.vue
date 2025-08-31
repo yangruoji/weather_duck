@@ -80,7 +80,7 @@
 import { computed, ref, onMounted, onUnmounted } from 'vue'
 import { WeatherData } from '../types/weather'
 import { DateUtils } from '../utils/dateUtils'
-import { OptimizedSupabaseDiaryService } from '../services/optimizedSupabaseDiary'
+// import { OptimizedSupabaseDiaryService } from '../services/optimizedSupabaseDiary'
 import type { WeatherDiary } from '../config/supabase'
 
 interface Props {
@@ -133,7 +133,7 @@ function onDiaryEvent(ev: Event) {
   }
 }
 
-function onDiariesLoaded(ev: Event) {
+function onDiariesLoaded(_ev: Event) {
   // 批量日记加载完成，更新显示
   loadDiary()
 }

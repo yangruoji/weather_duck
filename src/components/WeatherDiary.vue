@@ -25,51 +25,59 @@
         </div>
       </div>
 
-      <div class="diary-preview" v-if="savedContent">
-        已保存日记：{{ savedPreview }}
+      <!-- 加载状态 -->
+      <div v-if="isLoading" class="loading-state">
+        <t-loading size="medium" text="正在加载日记..." />
       </div>
       
-      <div class="diary-editor">
-        <t-textarea
-          v-model="diaryText"
-          :placeholder="`记录一下 ${date} 的天气感受吧...`"
-          :maxlength="1000"
-          :autosize="{ minRows: 8, maxRows: 15 }"
-          show-limit-number
-          clearable
-        />
-      </div>
-
-      <div class="image-uploader">
-        <t-space align="center">
-          <input type="file" multiple accept="image/*" @change="onFilesChange" />
-          <t-button v-if="imageList.length > 0" variant="outline" theme="danger" size="small" @click="clearAllImages">清空图片</t-button>
-        </t-space>
-        <div class="images-preview" v-if="imageList.length > 0">
-          <div class="image-item" v-for="(img, index) in imageList" :key="index">
-            <img :src="img" alt="预览" />
-            <t-button size="small" theme="danger" variant="text" @click="removeImage(index)">×</t-button>
+      <!-- 日记内容 -->
+      <template v-else>
+        <div class="diary-preview" v-if="savedContent">
+          已保存日记：{{ savedPreview }}
+        </div>
+        
+        <div class="diary-editor">
+          <t-textarea
+            v-model="diaryText"
+            :placeholder="`记录一下 ${date} 的天气感受吧...`"
+            :maxlength="1000"
+            :autosize="{ minRows: 8, maxRows: 15 }"
+            show-limit-number
+            clearable
+          />
+        </div>
+        <div class="image-uploader">
+          <t-space align="center">
+            <input type="file" multiple accept="image/*" @change="onFilesChange" />
+            <t-button v-if="imageList.length > 0" variant="outline" theme="danger" size="small" @click="clearAllImages">清空图片</t-button>
+          </t-space>
+          <div class="images-preview" v-if="imageList.length > 0">
+            <div class="image-item" v-for="(img, index) in imageList" :key="index">
+              <img :src="img" alt="预览" />
+              <t-button size="small" theme="danger" variant="text" @click="removeImage(index)">×</t-button>
+            </div>
           </div>
         </div>
-      </div>
-      
-      <div class="diary-actions">
-        <t-space>
-          <t-button variant="outline" @click="handleClose">取消</t-button>
-          <t-button theme="primary" @click="handleSave" :loading="saving">
-            保存日记
-          </t-button>
-        </t-space>
-      </div>
+        
+        <div class="diary-actions">
+          <t-space>
+            <t-button variant="outline" @click="handleClose">取消</t-button>
+            <t-button theme="primary" @click="handleSave" :loading="saving">
+              保存日记
+            </t-button>
+          </t-space>
+        </div>
+      </template>
     </div>
   </t-dialog>
 </template>
 
 <script setup lang="ts">
-import { ref, watch, computed } from 'vue'
+import { ref, watch, computed, onMounted } from 'vue'
 import { WeatherData } from '../types/weather'
 import { DateUtils } from '../utils/dateUtils'
 import { StorageAdapter } from '../services/storageAdapter'
+import { OptimizedSupabaseDiaryService } from '../services/optimizedSupabaseDiary'
 
 interface Props {
   visible: boolean
@@ -90,6 +98,7 @@ const savedContent = ref('')
 const imageData = ref<string>('') // 封面（第一张）
 const imageList = ref<string[]>([])
 const imageDirty = ref(false)
+const isLoading = ref(false)
 
 const savedPreview = computed(() => {
   const text = savedContent.value.trim()
@@ -104,14 +113,40 @@ const date = computed(() => {
 })
 
 // 监听对话框打开，加载已有日记
-watch(() => props.visible, async (newVisible) => {
+watch(() => props.visible, async (newVisible, oldVisible) => {
+  console.log('visible 变化:', oldVisible, '->', newVisible, 'weather.date:', props.weather?.date)
   if (newVisible) {
+    console.log('对话框打开，开始加载日记')
+    isLoading.value = true
     await loadDiary()
+    isLoading.value = false
   } else {
+    console.log('对话框关闭，清空数据')
     diaryText.value = ''
     imageData.value = ''
     imageList.value = []
     imageDirty.value = false
+    isLoading.value = false
+  }
+}, { immediate: true })
+
+// 组件挂载时，如果对话框已经可见，立即加载数据
+onMounted(async () => {
+  console.log('组件挂载，visible:', props.visible, 'weather.date:', props.weather?.date)
+  if (props.visible && props.weather?.date) {
+    console.log('挂载时立即加载日记')
+    isLoading.value = true
+    await loadDiary()
+    isLoading.value = false
+  }
+})
+
+// 监听天气数据变化，重新加载日记
+watch(() => props.weather?.date, async (newDate, oldDate) => {
+  if (newDate && newDate !== oldDate && props.visible) {
+    isLoading.value = true
+    await loadDiary()
+    isLoading.value = false
   }
 })
 
@@ -126,7 +161,9 @@ async function loadDiary() {
     return
   }
   try {
-    const diary = await StorageAdapter.getDiary(props.weather.date)
+    console.log('正在加载日记:', props.weather.date)
+    const diary = await OptimizedSupabaseDiaryService.getDiary(props.weather.date)
+    console.log('加载到的日记:', diary)
     if (diary) {
       savedContent.value = diary.content || ''
       diaryText.value = diary.content || ''
@@ -174,14 +211,14 @@ async function handleSave() {
 
   saving.value = true
   try {
-    await StorageAdapter.saveDiary({
+    await OptimizedSupabaseDiaryService.saveDiary({
       date: props.weather.date,
       content: diaryText.value.trim(),
       weather_data: props.weather,
       images: imageDirty.value ? imageList.value : [],
       mood: '',
       city: '',
-      video: ''
+      videos: []
     })
     savedContent.value = diaryText.value.trim()
     emit('saved', props.weather.date, diaryText.value.trim())
@@ -246,6 +283,22 @@ function handleVisibleChange(value: boolean) {
 <style scoped>
 .diary-content {
   padding: 0;
+}
+
+.loading-state {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 200px;
+  color: #666;
+}
+
+.loading-state {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 200px;
+  color: #666;
 }
 
 .weather-summary {

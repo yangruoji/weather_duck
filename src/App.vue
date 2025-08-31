@@ -164,7 +164,7 @@ const aboutVisible = ref(false)
 const isHeaderRightVisible = ref(true)
 let scrollTimer: number | null = null
 let lastScrollDirection = 0 // 1向下，-1向上，0初始
-let lastScrollY = 0
+// let lastScrollY = 0
 
 // 计算标题中显示的城市和省份
 const headerParts = computed(() => {
@@ -402,15 +402,15 @@ function showAbout() {
 
 // 滚动处理函数 - 防抖+方向锁定，彻底避免抖动
 function handleScroll() {
-  const currentScrollY = window.scrollY
+  // const currentScrollY = window.scrollY
   
   // 清除之前的定时器
   if (scrollTimer) {
     clearTimeout(scrollTimer)
   }
   
-  // 计算滚动方向
-  const scrollDirection = currentScrollY > lastScrollY ? 1 : -1
+  // 计算滚动方向 (暂时注释掉未使用的变量)
+  // const scrollDirection = currentScrollY > lastScrollY ? 1 : -1
   
   // 防抖处理，100ms后执行
   scrollTimer = window.setTimeout(() => {
@@ -433,7 +433,7 @@ function handleScroll() {
     // 在50-150px之间保持当前状态不变
   }, 100)
   
-  lastScrollY = currentScrollY
+  // lastScrollY = currentScrollY
 }
 
 onMounted(async () => {

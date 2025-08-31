@@ -160,7 +160,7 @@ function getMoodIcon(mood: string): string {
   return moodIcons[mood] || '😊'
 }
 
-function previewImage(image: string, index: number) {
+function previewImage(_image: string, index: number) {
   previewIndex.value = index
   imagePreviewVisible.value = true
 }

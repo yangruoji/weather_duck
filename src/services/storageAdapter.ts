@@ -34,7 +34,7 @@ export class StorageAdapter {
       data.images || [],
       data.mood || '',
       data.city || '',
-      data.video || ''
+      (data.videos && data.videos.length > 0 ? data.videos[0] : '') || ''
     )
   }
 
@@ -62,7 +62,7 @@ export class StorageAdapter {
       images: localDiary.images,
       mood: localDiary.mood,
       city: localDiary.city,
-      video: localDiary.video
+      videos: localDiary.video ? [localDiary.video] : []
     }
   }
 

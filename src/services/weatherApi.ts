@@ -264,7 +264,7 @@ export class WeatherApiService {
     endDate: string
   ): Promise<WeatherData[]> {
     const today = new Date().toISOString().slice(0, 10)
-    const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
+    // const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
     
     try {
       // 如果请求的日期包含今天或未来日期，使用forecast API
