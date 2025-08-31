@@ -80,7 +80,7 @@
 import { computed, ref, onMounted, onUnmounted } from 'vue'
 import { WeatherData } from '../types/weather'
 import { DateUtils } from '../utils/dateUtils'
-import { StorageAdapter } from '../services/storageAdapter'
+import { OptimizedSupabaseDiaryService } from '../services/optimizedSupabaseDiary'
 import type { WeatherDiary } from '../config/supabase'
 
 interface Props {
@@ -106,8 +106,10 @@ const hasDiary = ref(false)
 const diaryData = ref<WeatherDiary | null>(null)
 
 async function loadDiary() {
-  try {
-    const diary = await StorageAdapter.getDiary(props.weather.date)
+  // 优先从全局缓存获取数据，避免单独API请求
+  const globalCache = (window as any).__diaryCache
+  if (globalCache && globalCache.has(props.weather.date)) {
+    const diary = globalCache.get(props.weather.date)
     if (diary) {
       hasDiary.value = true
       diaryData.value = diary
@@ -115,10 +117,12 @@ async function loadDiary() {
       hasDiary.value = false
       diaryData.value = null
     }
-  } catch (e) {
-    console.warn('加载日记失败:', e)
-    hasDiary.value = false
+    return
   }
+
+  // 如果缓存中没有，则不发送请求，等待批量加载完成
+  hasDiary.value = false
+  diaryData.value = null
 }
 
 function onDiaryEvent(ev: Event) {
@@ -129,13 +133,31 @@ function onDiaryEvent(ev: Event) {
   }
 }
 
+function onDiariesLoaded(ev: Event) {
+  // 批量日记加载完成，更新显示
+  loadDiary()
+}
+
+function onDiaryUpdated(ev: Event) {
+  // 单个日记更新，立即刷新显示
+  const ce = ev as CustomEvent
+  const d = ce?.detail?.date
+  if (d === props.weather.date) {
+    loadDiary()
+  }
+}
+
 onMounted(async () => {
   await loadDiary()
   window.addEventListener('diary:saved', onDiaryEvent)
+  window.addEventListener('diaries:loaded', onDiariesLoaded)
+  window.addEventListener('diary:updated', onDiaryUpdated)
 })
 
 onUnmounted(() => {
   window.removeEventListener('diary:saved', onDiaryEvent)
+  window.removeEventListener('diaries:loaded', onDiariesLoaded)
+  window.removeEventListener('diary:updated', onDiaryUpdated)
 })
 
 function getDiaryPreview(content: string): string {
@@ -149,7 +171,7 @@ function getFirstImage(diary: WeatherDiary): string {
   if (diary.images && diary.images.length > 0) {
     return diary.images[0]
   }
-  return diary.image || ''
+  return ''
 }
 
 function getMoodIcon(mood: string): string {

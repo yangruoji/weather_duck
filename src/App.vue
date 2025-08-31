@@ -127,7 +127,7 @@ import WeatherDiaryEdit from './components/WeatherDiaryEdit.vue'
 import WeatherDiaryView from './components/WeatherDiaryView.vue'
 import AboutDialog from './components/AboutDialog.vue'
 import { WeatherApiService } from './services/weatherApi'
-import { OptimizedDiaryService } from './services/optimizedDiary'
+import { OptimizedSupabaseDiaryService } from './services/optimizedSupabaseDiary'
 import type { WeatherData } from './types/weather'
 import { GeocodingService } from './services/geocoding'
 import { initializeSupabase } from './utils/initSupabase'
@@ -315,11 +315,13 @@ function printPage() {
 // 日记缓存，避免重复请求
 const diaryCache = ref<Map<string, any>>(new Map())
 
+// 将缓存暴露给全局，供WeatherCard使用
+;(window as any).__diaryCache = diaryCache.value
+
 // 批量预加载日记概览
 async function preloadDiariesOverview(startDate: string, endDate: string) {
   try {
-    const { OptimizedDiaryService } = await import('./services/optimizedDiary')
-    const diaries = await OptimizedDiaryService.getDiariesByDateRange(startDate, endDate)
+    const diaries = await OptimizedSupabaseDiaryService.getDiariesInRange(startDate, endDate)
     
     // 将结果存入缓存
     diaries.forEach(diary => {
@@ -327,6 +329,11 @@ async function preloadDiariesOverview(startDate: string, endDate: string) {
         diaryCache.value.set(diary.date, diary)
       }
     })
+
+    // 通知所有WeatherCard组件更新
+    window.dispatchEvent(new CustomEvent('diaries:loaded', { 
+      detail: { startDate, endDate, diaries } 
+    }))
   } catch (error) {
     console.warn('预加载日记概览失败:', error)
   }
@@ -352,8 +359,7 @@ async function handleWeatherCardClick(weather: WeatherData) {
   
   // 后台异步检查日记内容
   try {
-    const { OptimizedDiaryService } = await import('./services/optimizedDiary')
-    const diary = await OptimizedDiaryService.getDiaryDetail(weather.date)
+    const diary = await OptimizedSupabaseDiaryService.getDiary(weather.date)
     diaryCache.value.set(weather.date, diary)
   } catch (e) {
     console.warn('后台加载日记失败:', e)
@@ -368,9 +374,25 @@ function handleEditDiary(weather: WeatherData) {
 }
 
 // 处理日记保存
-function handleDiarySaved(date: string, content: string) {
+async function handleDiarySaved(date: string, content: string) {
   console.log(`日记已保存: ${date}`, content ? '有内容' : '已删除')
-  // 可以在这里添加保存成功的提示或其他逻辑
+  
+  // 重新加载该日期的日记数据到缓存
+  try {
+    const diary = await OptimizedSupabaseDiaryService.getDiary(date)
+    if (diary) {
+      diaryCache.value.set(date, diary)
+    } else {
+      diaryCache.value.delete(date)
+    }
+    
+    // 通知所有WeatherCard更新
+    window.dispatchEvent(new CustomEvent('diary:updated', { 
+      detail: { date, diary } 
+    }))
+  } catch (error) {
+    console.warn('更新缓存失败:', error)
+  }
 }
 
 // 显示About对话框

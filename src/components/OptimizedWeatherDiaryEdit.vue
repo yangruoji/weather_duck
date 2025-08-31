@@ -207,8 +207,8 @@
 import { ref, watch, computed } from 'vue'
 import { WeatherData } from '../types/weather'
 import { DateUtils } from '../utils/dateUtils'
-import { SupabaseStorageService } from '../services/supabaseStorage'
-import { OptimizedSupabaseDiaryService } from '../services/optimizedSupabaseDiary'
+import { supabaseStorage } from '../services/supabaseStorage'
+import { optimizedSupabaseDiary } from '../services/optimizedSupabaseDiary'
 import type { WeatherDiary } from '../config/supabase'
 
 interface Props {
@@ -270,9 +270,6 @@ const date = computed(() => {
   return DateUtils.formatFullDate(props.weather.date)
 })
 
-// 上传配置
-const uploadAction = 'data:' // 使用data URL，不实际上传到服务器
-
 // 监听对话框打开，加载已有日记
 watch(() => props.visible, async (newVisible) => {
   if (newVisible) {
@@ -302,7 +299,7 @@ async function loadDiary() {
   }
   
   try {
-    const diary = await OptimizedSupabaseDiaryService.getDiary(props.weather.date)
+    const diary = await optimizedSupabaseDiary.getDiary(props.weather.date)
     if (diary) {
       hasExistingDiary.value = true
       cityLocation.value = diary.city || ''
@@ -444,14 +441,9 @@ async function handleSave() {
         image.uploading = true
         
         try {
-          const url = await SupabaseStorageService.uploadImage(
-            image.file, 
-            undefined, // fileName
-            undefined, // userId
-            (progress: number) => {
-              image.progress = progress
-            }
-          )
+          const url = await supabaseStorage.uploadImage(image.file, (progress) => {
+            image.progress = progress
+          })
           
           image.url = url
           imageUrls.push(url)
@@ -484,14 +476,9 @@ async function handleSave() {
         video.uploading = true
         
         try {
-          const url = await SupabaseStorageService.uploadVideo(
-            video.file, 
-            undefined, // fileName
-            undefined, // userId
-            (progress: number) => {
-              video.progress = progress
-            }
-          )
+          const url = await supabaseStorage.uploadVideo(video.file, (progress) => {
+            video.progress = progress
+          })
           
           video.url = url
           videoUrls.push(url)
@@ -509,7 +496,7 @@ async function handleSave() {
     // 保存日记到数据库
     saveProgressText.value = '正在保存日记...'
     
-    await OptimizedSupabaseDiaryService.saveDiary({
+    await optimizedSupabaseDiary.createDiary({
       date: props.weather.date,
       content: diaryText.value.trim(),
       weather_data: props.weather,
@@ -547,7 +534,7 @@ async function handleDelete() {
   if (!props.weather || !props.weather.date) return
   
   try {
-    await OptimizedSupabaseDiaryService.deleteDiary(props.weather.date)
+    await optimizedSupabaseDiary.deleteDiary(props.weather.date)
     emit('saved', props.weather.date, '')
     
     // 通知全局刷新

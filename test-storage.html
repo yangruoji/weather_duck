@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>测试Supabase存储</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <h1>测试Supabase存储</h1>
+    <input type="file" id="fileInput" accept="image/*">
+    <button onclick="testUpload()">测试上传</button>
+    <div id="result"></div>
+
+    <script>
+        const supabaseUrl = 'https://obtdujrsrnwbzfeiwpxt.supabase.co'
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9idGR1anJzcm53YnpmZWl3cHh0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzU2NTM0NTIsImV4cCI6MjA1MTIyOTQ1Mn0.Ej7Ej7Ej7Ej7Ej7Ej7Ej7Ej7Ej7Ej7Ej7Ej7Ej7E'
+        const supabase = window.supabase.createClient(supabaseUrl, supabaseKey)
+
+        async function testUpload() {
+            const fileInput = document.getElementById('fileInput')
+            const file = fileInput.files[0]
+            
+            if (!file) {
+                alert('请选择一个文件')
+                return
+            }
+
+            try {
+                const fileName = `test-${Date.now()}-${file.name}`
+                
+                console.log('开始上传文件:', fileName)
+                
+                const { data, error } = await supabase.storage
+                    .from('diary-images')
+                    .upload(fileName, file, {
+                        cacheControl: '3600',
+                        upsert: false
+                    })
+
+                if (error) {
+                    console.error('上传失败:', error)
+                    document.getElementById('result').innerHTML = `上传失败: ${error.message}`
+                    return
+                }
+
+                console.log('上传成功:', data)
+                
+                // 获取公共URL
+                const { data: urlData } = supabase.storage
+                    .from('diary-images')
+                    .getPublicUrl(data.path)
+
+                document.getElementById('result').innerHTML = `
+                    <p>上传成功!</p>
+                    <p>文件路径: ${data.path}</p>
+                    <p>公共URL: <a href="${urlData.publicUrl}" target="_blank">${urlData.publicUrl}</a></p>
+                    <img src="${urlData.publicUrl}" style="max-width: 300px;">
+                `
+                
+            } catch (error) {
+                console.error('测试失败:', error)
+                document.getElementById('result').innerHTML = `测试失败: ${error.message}`
+            }
+        }
+    </script>
+</body>
+</html>

@@ -60,11 +60,13 @@
       </div>
 
       <!-- 视频展示 -->
-      <div class="diary-video" v-if="diaryData.video">
+      <div class="diary-video" v-if="diaryData.videos && diaryData.videos.length > 0">
         <h3 class="content-title">视频记录</h3>
-        <video :src="diaryData.video" controls class="video-player">
-          您的浏览器不支持视频播放
-        </video>
+        <div v-for="(video, index) in diaryData.videos" :key="index" class="video-item">
+          <video :src="video" controls class="video-player">
+            您的浏览器不支持视频播放
+          </video>
+        </div>
       </div>
 
       <!-- 操作按钮 -->
@@ -96,7 +98,7 @@
 import { ref, watch, computed } from 'vue'
 import { WeatherData } from '../types/weather'
 import { DateUtils } from '../utils/dateUtils'
-import { StorageAdapter } from '../services/storageAdapter'
+import { OptimizedSupabaseDiaryService } from '../services/optimizedSupabaseDiary'
 import type { WeatherDiary } from '../config/supabase'
 
 interface Props {
@@ -136,7 +138,7 @@ async function loadDiary() {
   }
   
   try {
-    const diary = await StorageAdapter.getDiary(props.weather.date)
+    const diary = await OptimizedSupabaseDiaryService.getDiary(props.weather.date)
     diaryData.value = diary
   } catch (e) {
     console.warn('加载日记失败:', e)

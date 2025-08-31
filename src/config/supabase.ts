@@ -32,8 +32,8 @@ export interface WeatherDiary {
   content?: string
   mood?: string
   city?: string
-  images?: string[] // 存储文件URL数组
-  video?: string // 存储视频文件URL
+  images?: string[] // 存储图片URL数组
+  videos?: string[] // 存储视频URL数组
   created_at?: string
   updated_at?: string
 }

@@ -1,0 +1,226 @@
+import { isSupabaseEnabled } from '../config/supabase'
+import { OptimizedSupabaseDiaryService } from './optimizedSupabaseDiary'
+import { WeatherDiary } from '../config/supabase'
+
+/**
+ * 优化版存储适配器
+ * 支持批量操作和更好的性能
+ */
+export class OptimizedStorageAdapter {
+  
+  /**
+   * 获取单个日记
+   */
+  static async getDiary(date: string): Promise<WeatherDiary | null> {
+    if (isSupabaseEnabled) {
+      return await OptimizedSupabaseDiaryService.getDiary(date)
+    } else {
+      // 本地存储fallback
+      const stored = localStorage.getItem(`diary_${date}`)
+      return stored ? JSON.parse(stored) : null
+    }
+  }
+
+  /**
+   * 批量获取日记 - 优化版本
+   * 用于日历组件，避免多次请求
+   */
+  static async getDiariesByDates(dates: string[]): Promise<Record<string, WeatherDiary>> {
+    if (isSupabaseEnabled) {
+      return await OptimizedSupabaseDiaryService.getDiariesByDates(dates)
+    } else {
+      // 本地存储fallback
+      const diariesMap: Record<string, WeatherDiary> = {}
+      dates.forEach(date => {
+        const stored = localStorage.getItem(`diary_${date}`)
+        if (stored) {
+          diariesMap[date] = JSON.parse(stored)
+        }
+      })
+      return diariesMap
+    }
+  }
+
+  /**
+   * 获取月份日记 - 用于日历优化
+   */
+  static async getMonthDiaries(year: number, month: number): Promise<Record<string, WeatherDiary>> {
+    if (isSupabaseEnabled) {
+      return await OptimizedSupabaseDiaryService.getMonthDiaries(year, month)
+    } else {
+      // 本地存储fallback - 扫描整个月
+      const diariesMap: Record<string, WeatherDiary> = {}
+      const daysInMonth = new Date(year, month, 0).getDate()
+      
+      for (let day = 1; day <= daysInMonth; day++) {
+        const date = `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`
+        const stored = localStorage.getItem(`diary_${date}`)
+        if (stored) {
+          diariesMap[date] = JSON.parse(stored)
+        }
+      }
+      
+      return diariesMap
+    }
+  }
+
+  /**
+   * 保存日记 - 直接保存，文件上传在组件中处理
+   */
+  static async saveDiary(
+    diary: Omit<WeatherDiary, 'id' | 'created_at' | 'updated_at'>
+  ): Promise<WeatherDiary> {
+    if (isSupabaseEnabled) {
+      return await OptimizedSupabaseDiaryService.saveDiary(diary)
+    } else {
+      // 本地存储fallback
+      const diaryData: WeatherDiary = {
+        ...diary,
+        id: `local_${Date.now()}`,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      }
+      
+      localStorage.setItem(`diary_${diary.date}`, JSON.stringify(diaryData))
+      return diaryData
+    }
+  }
+
+  /**
+   * 删除日记
+   */
+  static async deleteDiary(date: string): Promise<boolean> {
+    if (isSupabaseEnabled) {
+      return await OptimizedSupabaseDiaryService.deleteDiary(date)
+    } else {
+      localStorage.removeItem(`diary_${date}`)
+      return true
+    }
+  }
+
+  /**
+   * 搜索日记
+   */
+  static async searchDiaries(keyword: string, limit: number = 20): Promise<WeatherDiary[]> {
+    if (isSupabaseEnabled) {
+      return await OptimizedSupabaseDiaryService.searchDiaries(keyword, limit)
+    } else {
+      // 本地存储搜索
+      const results: WeatherDiary[] = []
+      const keys = Object.keys(localStorage).filter(key => key.startsWith('diary_'))
+      
+      for (const key of keys) {
+        if (results.length >= limit) break
+        
+        const stored = localStorage.getItem(key)
+        if (stored) {
+          const diary = JSON.parse(stored)
+          const searchText = `${diary.content || ''} ${diary.city || ''} ${diary.mood || ''}`.toLowerCase()
+          if (searchText.includes(keyword.toLowerCase())) {
+            results.push(diary)
+          }
+        }
+      }
+      
+      return results.sort((a, b) => (b.date || '').localeCompare(a.date || ''))
+    }
+  }
+
+  /**
+   * 获取统计信息
+   */
+  static async getStatistics() {
+    if (isSupabaseEnabled) {
+      return await OptimizedSupabaseDiaryService.getStatistics()
+    } else {
+      // 本地存储统计
+      const stats = {
+        totalDiaries: 0,
+        totalImages: 0,
+        totalVideos: 0,
+        moodStats: {} as Record<string, number>,
+        cityStats: {} as Record<string, number>,
+        monthlyStats: {} as Record<string, number>
+      }
+
+      const keys = Object.keys(localStorage).filter(key => key.startsWith('diary_'))
+      
+      keys.forEach(key => {
+        const stored = localStorage.getItem(key)
+        if (stored) {
+          const diary = JSON.parse(stored)
+          stats.totalDiaries++
+          
+          if (diary.images) {
+            stats.totalImages += diary.images.length
+          }
+          if (diary.videos) {
+            stats.totalVideos += diary.videos.length
+          }
+          if (diary.mood) {
+            stats.moodStats[diary.mood] = (stats.moodStats[diary.mood] || 0) + 1
+          }
+          if (diary.city) {
+            stats.cityStats[diary.city] = (stats.cityStats[diary.city] || 0) + 1
+          }
+          if (diary.date) {
+            const month = diary.date.substring(0, 7)
+            stats.monthlyStats[month] = (stats.monthlyStats[month] || 0) + 1
+          }
+        }
+      })
+
+      return stats
+    }
+  }
+
+  /**
+   * 文件转Base64 - 本地存储使用
+   */
+  private static fileToBase64(file: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onload = () => resolve(reader.result as string)
+      reader.onerror = reject
+      reader.readAsDataURL(file)
+    })
+  }
+
+  /**
+   * 批量删除日记
+   */
+  static async deleteDiaries(dates: string[]): Promise<boolean> {
+    if (isSupabaseEnabled) {
+      return await OptimizedSupabaseDiaryService.deleteDiaries(dates)
+    } else {
+      dates.forEach(date => {
+        localStorage.removeItem(`diary_${date}`)
+      })
+      return true
+    }
+  }
+
+  /**
+   * 获取日期范围内的日记
+   */
+  static async getDiariesInRange(startDate: string, endDate: string): Promise<WeatherDiary[]> {
+    if (isSupabaseEnabled) {
+      return await OptimizedSupabaseDiaryService.getDiariesInRange(startDate, endDate)
+    } else {
+      const results: WeatherDiary[] = []
+      const keys = Object.keys(localStorage).filter(key => key.startsWith('diary_'))
+      
+      keys.forEach(key => {
+        const stored = localStorage.getItem(key)
+        if (stored) {
+          const diary = JSON.parse(stored)
+          if (diary.date >= startDate && diary.date <= endDate) {
+            results.push(diary)
+          }
+        }
+      })
+      
+      return results.sort((a, b) => (a.date || '').localeCompare(b.date || ''))
+    }
+  }
+}
