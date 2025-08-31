@@ -265,7 +265,7 @@ async function fetchAll() {
   try {
     // 优化：使用批量请求而不是单个请求
     const [weatherData] = await Promise.all([
-      WeatherApiService.getHistoricalWeather(
+      WeatherApiService.getEnhancedWeatherData(
         latitude.value,
         longitude.value,
         startDate.value,

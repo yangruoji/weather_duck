@@ -164,7 +164,7 @@ async function handleSave() {
       savedContent.value = ''
       emit('saved', props.weather.date, '')
       // 通知全局刷新（卡片实时更新）
-      window.dispatchEvent(new CustomEvent('diary:saved', { detail: { date: props.weather.date } }))
+      window.dispatchEvent(new CustomEvent('diary:updated', { detail: { date: props.weather.date, action: 'save' } }))
       handleClose()
     } catch (e) {
       console.error('删除日记失败:', e)
@@ -178,16 +178,15 @@ async function handleSave() {
       date: props.weather.date,
       content: diaryText.value.trim(),
       weather_data: props.weather,
-      coverImage: imageDirty.value ? imageData.value : '',
       images: imageDirty.value ? imageList.value : [],
       mood: '',
       city: '',
       video: ''
-    )
+    })
     savedContent.value = diaryText.value.trim()
     emit('saved', props.weather.date, diaryText.value.trim())
     // 通知全局刷新（卡片实时更新）
-    window.dispatchEvent(new CustomEvent('diary:saved', { detail: { date: props.weather.date } }))
+    window.dispatchEvent(new CustomEvent('diary:updated', { detail: { date: props.weather.date, action: 'delete' } }))
     handleClose()
   } catch (e) {
     console.error('保存日记失败:', e)

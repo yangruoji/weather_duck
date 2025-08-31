@@ -513,8 +513,8 @@ async function handleSave() {
     emit('saved', props.weather.date, diaryText.value.trim())
     
     // 通知全局刷新
-    window.dispatchEvent(new CustomEvent('diary:saved', { 
-      detail: { date: props.weather.date } 
+    window.dispatchEvent(new CustomEvent('diary:updated', { 
+      detail: { date: props.weather.date, action: 'save' } 
     }))
     
     setTimeout(() => {
@@ -538,8 +538,8 @@ async function handleDelete() {
     emit('saved', props.weather.date, '')
     
     // 通知全局刷新
-    window.dispatchEvent(new CustomEvent('diary:saved', { 
-      detail: { date: props.weather.date } 
+    window.dispatchEvent(new CustomEvent('diary:updated', { 
+      detail: { date: props.weather.date, action: 'delete' } 
     }))
     
     handleClose()

@@ -162,7 +162,7 @@ function getDiaryPreview(diary?: WeatherDiary): string {
 
 // 监听日记保存事件，实时更新日历
 onMounted(() => {
-  window.addEventListener('diary:saved', handleDiarySaved as EventListener)
+  window.addEventListener('diary:updated', handleDiarySaved as EventListener)
 })
 
 function handleDiarySaved(event: Event) {

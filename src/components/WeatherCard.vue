@@ -149,13 +149,13 @@ function onDiaryUpdated(ev: Event) {
 
 onMounted(async () => {
   await loadDiary()
-  window.addEventListener('diary:saved', onDiaryEvent)
+  window.addEventListener('diary:updated', onDiaryEvent)
   window.addEventListener('diaries:loaded', onDiariesLoaded)
   window.addEventListener('diary:updated', onDiaryUpdated)
 })
 
 onUnmounted(() => {
-  window.removeEventListener('diary:saved', onDiaryEvent)
+  window.removeEventListener('diary:updated', onDiaryEvent)
   window.removeEventListener('diaries:loaded', onDiariesLoaded)
   window.removeEventListener('diary:updated', onDiaryUpdated)
 })
