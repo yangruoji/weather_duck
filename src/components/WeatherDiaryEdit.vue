@@ -9,35 +9,7 @@
   >
     <div class="diary-edit-content">
       <!-- 天气概览 -->
-            <div class="weather-summary" v-if="weather">
-        <div class="weather-main">
-          <div class="weather-icon-section">
-            <div class="weather-icon">{{ weather.icon || '🌤️' }}</div>
-            <div class="weather-description">{{ weather.description || '未知天气' }}</div>
-          </div>
-          <div class="temperature-section">
-            <div class="temperature">{{ weather.temperature?.current || 0 }}°</div>
-            <div class="temp-range">
-              {{ weather.temperature?.min || 0 }}° / {{ weather.temperature?.max || 0 }}°
-            </div>
-          </div>
-        </div>
-        <div class="weather-details">
-          <div class="detail-item">
-            <span class="detail-icon">🌧️</span>
-            <span class="detail-text">降雨量: {{ weather.precipitation || 0 }}mm</span>
-          </div>
-          <div class="detail-item">
-            <span class="detail-icon">☁️</span>
-            <span class="detail-text">云量: {{ weather.cloudCover || 0 }}%</span>
-          </div>
-          
-          <div class="detail-item">
-            <span class="detail-icon">💨</span>
-            <span class="detail-text">风力: {{ weather.windSpeed || 0 }}km/h {{ weather.windDirection || '' }}</span>
-          </div>
-        </div>
-      </div>
+      <WeatherSummary v-if="weather" :weather="weather" />
 
       <!-- 城市信息 -->
       <div class="form-section">
@@ -753,7 +725,7 @@ function handleVisibleChange(value: boolean) {
 
 .weather-details {
   display: flex;
-  gap: 20px;
+  /* gap: 20px; */
   padding-top: 16px;
   border-top: 1px solid rgba(0, 82, 217, 0.1);
 }
