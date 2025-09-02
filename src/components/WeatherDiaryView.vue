@@ -28,6 +28,11 @@
             <span class="detail-text">降雨量: {{ weather.precipitation || 0 }}mm</span>
           </div>
           <div class="detail-item">
+            <span class="detail-icon">☁️</span>
+            <span class="detail-text">云量: {{ weather.cloudCover || 0 }}%</span>
+          </div>
+          
+          <div class="detail-item">
             <span class="detail-icon">💨</span>
             <span class="detail-text">风力: {{ weather.windSpeed || 0 }}km/h {{ weather.windDirection || '' }}</span>
           </div>
@@ -267,7 +272,7 @@ function handleVisibleChange(value: boolean) {
 
 .weather-icon-section {
   display: flex;
-  flex-direction: column;
+  /* flex-direction: column; */
   align-items: center;
   text-align: center;
 }

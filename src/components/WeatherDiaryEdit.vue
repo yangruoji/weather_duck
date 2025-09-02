@@ -9,15 +9,32 @@
   >
     <div class="diary-edit-content">
       <!-- 天气概览 -->
-      <div class="weather-summary" v-if="weather">
-        <div class="weather-icon">{{ weather.icon || '🌤️' }}</div>
-        <div class="weather-info">
-          <div class="temperature">{{ weather.temperature?.current || 0 }}°</div>
-          <div class="description">{{ weather.description || '未知天气' }}</div>
-          <div class="details">
-            {{ weather.temperature?.min || 0 }}° / {{ weather.temperature?.max || 0 }}° · 
-            降雨量: {{ weather.precipitation || 0 }}mm · 
-            风力: {{ weather.windSpeed || 0 }}km/h {{ weather.windDirection || '' }}
+            <div class="weather-summary" v-if="weather">
+        <div class="weather-main">
+          <div class="weather-icon-section">
+            <div class="weather-icon">{{ weather.icon || '🌤️' }}</div>
+            <div class="weather-description">{{ weather.description || '未知天气' }}</div>
+          </div>
+          <div class="temperature-section">
+            <div class="temperature">{{ weather.temperature?.current || 0 }}°</div>
+            <div class="temp-range">
+              {{ weather.temperature?.min || 0 }}° / {{ weather.temperature?.max || 0 }}°
+            </div>
+          </div>
+        </div>
+        <div class="weather-details">
+          <div class="detail-item">
+            <span class="detail-icon">🌧️</span>
+            <span class="detail-text">降雨量: {{ weather.precipitation || 0 }}mm</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-icon">☁️</span>
+            <span class="detail-text">云量: {{ weather.cloudCover || 0 }}%</span>
+          </div>
+          
+          <div class="detail-item">
+            <span class="detail-icon">💨</span>
+            <span class="detail-text">风力: {{ weather.windSpeed || 0 }}km/h {{ weather.windDirection || '' }}</span>
           </div>
         </div>
       </div>
@@ -310,15 +327,25 @@ function resetForm() {
 
 // 从数据库加载日记
 async function loadDiary() {
+  console.log('🔍 WeatherDiaryEdit loadDiary 被调用')
+  console.log('🔍 props.weather:', props.weather)
+  console.log('🔍 props.weather?.date:', props.weather?.date)
+  
   if (!props.weather || !props.weather.date) {
+    console.log('❌ 没有天气数据或日期，重置表单')
     resetForm()
     return
   }
   
   try {
+    console.log('🚀 开始调用 OptimizedSupabaseDiaryService.getDiary，日期:', props.weather.date)
+    
     const diary = await OptimizedSupabaseDiaryService.getDiary(props.weather.date)
     
+    console.log('📦 服务返回的日记数据:', diary)
+    
     if (diary) {
+      console.log('✅ 找到日记，设置表单内容')
       hasExistingDiary.value = true
       cityLocation.value = diary.city || ''
       selectedMood.value = diary.mood || ''
@@ -346,10 +373,11 @@ async function loadDiary() {
         }))
       }
     } else {
+      console.log('📝 没有找到日记，重置表单')
       resetForm()
     }
   } catch (e) {
-    console.warn('加载日记失败:', e)
+    console.error('💥 加载日记失败:', e)
     resetForm()
   }
 }
@@ -591,39 +619,83 @@ function handleVisibleChange(value: boolean) {
 }
 
 .weather-summary {
+  padding: 20px;
+  background: linear-gradient(135deg, #f0f7ff 0%, #e6f3ff 100%);
+  border-radius: 12px;
+  margin-bottom: 24px;
+  box-shadow: 0 2px 8px rgba(0, 82, 217, 0.1);
+}
+
+.weather-main {
   display: flex;
   align-items: center;
-  padding: 16px;
-  background: linear-gradient(135deg, #f0f7ff 0%, #e6f3ff 100%);
-  border-radius: 8px;
-  margin-bottom: 24px;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.weather-icon-section {
+  display: flex;
+  /* flex-direction: column; */
+  align-items: center;
+  text-align: center;
 }
 
 .weather-icon {
-  font-size: 48px;
-  margin-right: 16px;
+  font-size: 56px;
+  margin-bottom: 16px;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
 }
 
-.weather-info {
-  flex: 1;
+.weather-description {
+  font-size: 16px;
+  font-weight: 500;
+  color: #333;
+  white-space: nowrap;
+}
+
+.temperature-section {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  text-align: right;
 }
 
 .temperature {
-  font-size: 32px;
+  font-size: 42px;
   font-weight: 700;
   color: #0052d9;
+  line-height: 1;
   margin-bottom: 4px;
 }
 
-.description {
-  font-size: 18px;
-  color: #333;
-  margin-bottom: 8px;
+.temp-range {
+  font-size: 16px;
+  color: #666;
+  font-weight: 500;
 }
 
-.details {
+.weather-details {
+  display: flex;
+  gap: 20px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(0, 82, 217, 0.1);
+}
+
+.detail-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+}
+
+.detail-icon {
+  font-size: 16px;
+}
+
+.detail-text {
   font-size: 14px;
   color: #666;
+  font-weight: 500;
 }
 
 .form-section {
