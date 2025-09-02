@@ -9,7 +9,7 @@
   >
     <div class="diary-view-content" v-if="diaryData">
       <!-- 天气概览 -->
-      <WeatherSummary v-if="weather" :weather="weather" />
+      <WeatherSummary v-if="weather" :weather="weather" @dateChange="handleDateChange" />
 
       <!-- 日记信息 -->
       <div class="diary-info">
@@ -212,6 +212,10 @@ function handleNextDay() {
     const nextWeather = globalWeatherList.value[currentIndex + 1]
     emit('dateChange', nextWeather.date)
   }
+}
+
+function handleDateChange(date: string) {
+  emit('dateChange', date)
 }
 
 function handleClose() {

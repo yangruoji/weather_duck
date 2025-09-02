@@ -1,6 +1,23 @@
 <template>
   <div class="weather-summary" v-if="weather">
     <div class="weather-main">
+      <!-- 左箭头 -->
+      <div class="nav-arrow nav-arrow-left">
+        <t-tooltip content="上一天" placement="top">
+          <t-button
+            variant="text"
+            size="small"
+            @click="handlePreviousDay"
+            :disabled="!hasPreviousDay"
+            class="arrow-btn"
+          >
+            <template #icon>
+              <t-icon name="chevron-left" />
+            </template>
+          </t-button>
+        </t-tooltip>
+      </div>
+
       <div class="weather-icon-section">
         <div class="weather-icon">{{ weather.icon || '🌤️' }}</div>
         <div class="weather-description">{{ weather.description || '未知天气' }}</div>
@@ -10,6 +27,23 @@
         <div class="temp-range">
           {{ weather.temperature?.min || 0 }}° / {{ weather.temperature?.max || 0 }}°
         </div>
+      </div>
+
+      <!-- 右箭头 -->
+      <div class="nav-arrow nav-arrow-right">
+        <t-tooltip content="下一天" placement="top">
+          <t-button
+            variant="text"
+            size="small"
+            @click="handleNextDay"
+            :disabled="!hasNextDay"
+            class="arrow-btn"
+          >
+            <template #icon>
+              <t-icon name="chevron-right" />
+            </template>
+          </t-button>
+        </t-tooltip>
       </div>
     </div>
     <div class="weather-details">
@@ -30,13 +64,57 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
 import { WeatherData } from '../types/weather'
 
 interface Props {
   weather: WeatherData
 }
 
-defineProps<Props>()
+interface Emits {
+  (e: 'dateChange', date: string): void
+}
+
+const props = defineProps<Props>()
+const emit = defineEmits<Emits>()
+
+// 获取全局天气数据列表用于导航
+const globalWeatherList = computed(() => {
+  return (window as any).__weatherList || []
+})
+
+// 检查是否有上一天/下一天
+const hasPreviousDay = computed(() => {
+  if (!props.weather?.date || !globalWeatherList.value.length) return false
+  const currentIndex = globalWeatherList.value.findIndex((w: WeatherData) => w.date === props.weather.date)
+  return currentIndex > 0
+})
+
+const hasNextDay = computed(() => {
+  if (!props.weather?.date || !globalWeatherList.value.length) return false
+  const currentIndex = globalWeatherList.value.findIndex((w: WeatherData) => w.date === props.weather.date)
+  return currentIndex >= 0 && currentIndex < globalWeatherList.value.length - 1
+})
+
+function handlePreviousDay() {
+  if (!hasPreviousDay.value) return
+  
+  const currentIndex = globalWeatherList.value.findIndex((w: WeatherData) => w.date === props.weather.date)
+  if (currentIndex > 0) {
+    const previousWeather = globalWeatherList.value[currentIndex - 1]
+    emit('dateChange', previousWeather.date)
+  }
+}
+
+function handleNextDay() {
+  if (!hasNextDay.value) return
+  
+  const currentIndex = globalWeatherList.value.findIndex((w: WeatherData) => w.date === props.weather.date)
+  if (currentIndex >= 0 && currentIndex < globalWeatherList.value.length - 1) {
+    const nextWeather = globalWeatherList.value[currentIndex + 1]
+    emit('dateChange', nextWeather.date)
+  }
+}
 </script>
 
 <style scoped>
@@ -53,12 +131,51 @@ defineProps<Props>()
   align-items: center;
   justify-content: space-between;
   margin-bottom: 16px;
+  position: relative;
+}
+
+.nav-arrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.nav-arrow-left {
+  margin-right: 16px;
+}
+
+.nav-arrow-right {
+  margin-left: 16px;
+}
+
+.arrow-btn {
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  transition: all 0.2s ease;
+  color: #0052d9 !important;
+}
+
+.arrow-btn :deep(.t-icon) {
+  font-size: 20px;
+}
+
+.arrow-btn:hover:not(:disabled) {
+  background-color: rgba(0, 82, 217, 0.1) !important;
+  transform: scale(1.1);
+}
+
+.arrow-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
 }
 
 .weather-icon-section {
   display: flex;
   align-items: center;
   text-align: center;
+  flex: 1;
 }
 
 .weather-icon {
@@ -123,18 +240,36 @@ defineProps<Props>()
     padding: 16px;
   }
   
-  .weather-icon-section {
-    order: 1;
+  .weather-main {
+    /* 保持相同的布局结构 */
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
   }
   
-  .temperature-section {
-    order: 2;
-    align-items: center;
+  .nav-arrow {
+    /* 保持箭头按钮大小不变 */
+    flex-shrink: 0;
+  }
+  
+  .arrow-btn {
+    /* 移动端保持相同大小 */
+    width: 40px;
+    height: 40px;
+  }
+  
+  .weather-icon-section {
+    flex: 1;
     text-align: center;
   }
   
   .weather-icon {
     font-size: 48px;
+  }
+  
+  .temperature-section {
+    align-items: flex-end;
+    text-align: right;
   }
   
   .temperature {
@@ -149,6 +284,23 @@ defineProps<Props>()
 @media (max-width: 480px) {
   .weather-summary {
     padding: 12px;
+  }
+  
+  .weather-main {
+    /* 小屏幕仍保持水平布局 */
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  
+  .arrow-btn {
+    /* 小屏幕稍微缩小按钮 */
+    width: 36px;
+    height: 36px;
+  }
+  
+  .arrow-btn :deep(.t-icon) {
+    font-size: 18px;
   }
   
   .weather-icon {

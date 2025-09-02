@@ -9,7 +9,7 @@
   >
     <div class="diary-edit-content">
       <!-- 天气概览 -->
-      <WeatherSummary v-if="weather" :weather="weather" />
+      <WeatherSummary v-if="weather" :weather="weather" @dateChange="handleDateChange" />
 
       <!-- 城市信息 -->
       <div class="form-section">
@@ -204,6 +204,7 @@ import { WeatherData } from '../types/weather'
 import { DateUtils } from '../utils/dateUtils'
 import { SupabaseStorageService } from '../services/supabaseStorage'
 import { OptimizedSupabaseDiaryService } from '../services/optimizedSupabaseDiary'
+import WeatherSummary from './WeatherSummary.vue'
 // import type { WeatherDiary } from '../config/supabase'
 
 interface Props {
@@ -651,6 +652,10 @@ function handleNextDay() {
     const nextWeather = globalWeatherList.value[currentIndex + 1]
     emit('dateChange', nextWeather.date)
   }
+}
+
+function handleDateChange(date: string) {
+  emit('dateChange', date)
 }
 
 function handleClose() {
