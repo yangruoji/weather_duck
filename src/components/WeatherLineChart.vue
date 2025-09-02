@@ -599,18 +599,20 @@ function showCustomTooltip(event: any, text: string, type: 'weather' | 'mood') {
   if (!customTooltip) {
     customTooltip = document.createElement('div')
     customTooltip.style.cssText = `
-      position: absolute;
-      background: rgba(0, 0, 0, 0.8);
-      color: white;
+      position: fixed;
+      background: rgba(255, 255, 255, 0.95);
+      color: #495057;
+      border: 1px solid #e9ecef;
+      border-radius: 8px;
       padding: 8px 12px;
-      border-radius: 6px;
-      font-size: 12px;
+      font-size: 13px;
       line-height: 1.4;
       white-space: pre-line;
       pointer-events: none;
       z-index: 9999;
       max-width: 200px;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      backdrop-filter: blur(8px);
       transition: opacity 0.2s ease;
     `
     document.body.appendChild(customTooltip)
@@ -621,36 +623,61 @@ function showCustomTooltip(event: any, text: string, type: 'weather' | 'mood') {
   customTooltip.style.display = 'block'
   customTooltip.style.opacity = '1'
   
-  // 根据类型设置不同的背景色
-  if (type === 'weather') {
-    customTooltip.style.background = 'rgba(0, 82, 217, 0.9)'
-  } else if (type === 'mood') {
-    customTooltip.style.background = 'rgba(255, 107, 129, 0.9)'
-  }
-  
-  // 计算位置
+  // 获取图表容器的位置信息
   const containerRect = chartContainer.value.getBoundingClientRect()
-  const x = containerRect.left + event.offsetX
-  const y = containerRect.top + event.offsetY - 10
   
-  // 确保tooltip不超出视窗
-  const tooltipRect = customTooltip.getBoundingClientRect()
-  const viewportWidth = window.innerWidth
+  // 计算鼠标在页面中的绝对位置
+  let mouseX = 0
+  let mouseY = 0
   
-  let finalX = x
-  let finalY = y - tooltipRect.height
-  
-  // 水平位置调整
-  if (finalX + tooltipRect.width > viewportWidth) {
-    finalX = viewportWidth - tooltipRect.width - 10
+  // 尝试从不同的事件对象中获取鼠标位置
+  if (event.event && typeof event.event.clientX === 'number') {
+    // ECharts事件对象中的原生事件
+    mouseX = event.event.clientX
+    mouseY = event.event.clientY
+  } else if (typeof event.clientX === 'number') {
+    // 原生鼠标事件
+    mouseX = event.clientX
+    mouseY = event.clientY
+  } else if (typeof event.offsetX === 'number' && typeof event.offsetY === 'number') {
+    // 使用偏移位置计算绝对位置
+    mouseX = containerRect.left + event.offsetX
+    mouseY = containerRect.top + event.offsetY
+  } else {
+    // 默认使用容器中心位置
+    mouseX = containerRect.left + containerRect.width / 2
+    mouseY = containerRect.top + containerRect.height / 2
   }
+  
+  // 先获取tooltip的尺寸
+  const tooltipRect = customTooltip.getBoundingClientRect()
+  
+  // 计算tooltip的最终位置
+  let finalX = mouseX + 15 // 图标右侧15px
+  let finalY = mouseY - tooltipRect.height - 10 // 图标上方10px
+  
+  // 边界检查和调整
+  const viewportWidth = window.innerWidth
+  const viewportHeight = window.innerHeight
+  
+  // 水平位置调整 - 如果右侧空间不够，显示在左侧
+  if (finalX + tooltipRect.width > viewportWidth - 10) {
+    finalX = mouseX - tooltipRect.width - 15 // 图标左侧
+  }
+  
+  // 确保不超出左边界
   if (finalX < 10) {
     finalX = 10
   }
   
-  // 垂直位置调整
+  // 垂直位置调整 - 如果上方空间不够，显示在下方
   if (finalY < 10) {
-    finalY = y + 20 // 显示在鼠标下方
+    finalY = mouseY + 20 // 图标下方
+  }
+  
+  // 确保不超出下边界
+  if (finalY + tooltipRect.height > viewportHeight - 10) {
+    finalY = viewportHeight - tooltipRect.height - 10
   }
   
   customTooltip.style.left = `${finalX}px`

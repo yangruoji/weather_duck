@@ -10,14 +10,26 @@
     <div class="diary-view-content" v-if="diaryData">
       <!-- 天气概览 -->
       <div class="weather-summary" v-if="weather">
-        <div class="weather-icon">{{ weather.icon || '🌤️' }}</div>
-        <div class="weather-info">
-          <div class="temperature">{{ weather.temperature?.current || 0 }}°</div>
-          <div class="description">{{ weather.description || '未知天气' }}</div>
-          <div class="details">
-            {{ weather.temperature?.min || 0 }}° / {{ weather.temperature?.max || 0 }}° · 
-            降雨量: {{ weather.precipitation || 0 }}mm · 
-            风力: {{ weather.windSpeed || 0 }}km/h {{ weather.windDirection || '' }}
+        <div class="weather-main">
+          <div class="weather-icon-section">
+            <div class="weather-icon">{{ weather.icon || '🌤️' }}</div>
+            <div class="weather-description">{{ weather.description || '未知天气' }}</div>
+          </div>
+          <div class="temperature-section">
+            <div class="temperature">{{ weather.temperature?.current || 0 }}°</div>
+            <div class="temp-range">
+              {{ weather.temperature?.min || 0 }}° / {{ weather.temperature?.max || 0 }}°
+            </div>
+          </div>
+        </div>
+        <div class="weather-details">
+          <div class="detail-item">
+            <span class="detail-icon">🌧️</span>
+            <span class="detail-text">降雨量: {{ weather.precipitation || 0 }}mm</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-icon">💨</span>
+            <span class="detail-text">风力: {{ weather.windSpeed || 0 }}km/h {{ weather.windDirection || '' }}</span>
           </div>
         </div>
       </div>
@@ -239,39 +251,83 @@ function handleVisibleChange(value: boolean) {
 }
 
 .weather-summary {
+  padding: 20px;
+  background: linear-gradient(135deg, #f0f7ff 0%, #e6f3ff 100%);
+  border-radius: 12px;
+  margin-bottom: 24px;
+  box-shadow: 0 2px 8px rgba(0, 82, 217, 0.1);
+}
+
+.weather-main {
   display: flex;
   align-items: center;
-  padding: 16px;
-  background: linear-gradient(135deg, #f0f7ff 0%, #e6f3ff 100%);
-  border-radius: 8px;
-  margin-bottom: 24px;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.weather-icon-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
 }
 
 .weather-icon {
-  font-size: 48px;
-  margin-right: 16px;
+  font-size: 56px;
+  margin-bottom: 16px;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
 }
 
-.weather-info {
-  flex: 1;
+.weather-description {
+  font-size: 16px;
+  font-weight: 500;
+  color: #333;
+  white-space: nowrap;
+}
+
+.temperature-section {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  text-align: right;
 }
 
 .temperature {
-  font-size: 32px;
+  font-size: 42px;
   font-weight: 700;
   color: #0052d9;
+  line-height: 1;
   margin-bottom: 4px;
 }
 
-.description {
-  font-size: 18px;
-  color: #333;
-  margin-bottom: 8px;
+.temp-range {
+  font-size: 16px;
+  color: #666;
+  font-weight: 500;
 }
 
-.details {
+.weather-details {
+  display: flex;
+  gap: 20px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(0, 82, 217, 0.1);
+}
+
+.detail-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+}
+
+.detail-icon {
+  font-size: 16px;
+}
+
+.detail-text {
   font-size: 14px;
   color: #666;
+  font-weight: 500;
 }
 
 .diary-info {
@@ -395,17 +451,70 @@ function handleVisibleChange(value: boolean) {
 
 @media (max-width: 768px) {
   .weather-summary {
+    padding: 16px;
+  }
+  
+  /* .weather-main {
     flex-direction: column;
+    gap: 16px;
+    margin-bottom: 12px;
+  } */
+  
+  .weather-icon-section {
+    order: 1;
+  }
+  
+  .temperature-section {
+    order: 2;
+    align-items: center;
     text-align: center;
   }
   
   .weather-icon {
-    margin-right: 0;
-    margin-bottom: 12px;
+    font-size: 48px;
+  }
+  
+  .temperature {
+    font-size: 36px;
+  }
+  
+  /* .weather-details {
+    flex-direction: column;
+    gap: 12px;
+  } */
+  
+  .detail-item {
+    justify-content: center;
   }
   
   .image-gallery {
     grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 480px) {
+  .weather-summary {
+    padding: 12px;
+  }
+  
+  .weather-icon {
+    font-size: 40px;
+  }
+  
+  .temperature {
+    font-size: 32px;
+  }
+  
+  .weather-description {
+    font-size: 14px;
+  }
+  
+  .temp-range {
+    font-size: 14px;
+  }
+  
+  .detail-text {
+    font-size: 13px;
   }
 }
 </style>
