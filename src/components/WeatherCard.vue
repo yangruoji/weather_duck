@@ -24,20 +24,20 @@
     
     <div class="weather-details">
       <div class="detail-item">
-        <span class="label">降雨量:</span>
+        <span class="label">降雨:</span>
         <span class="value">{{ weather.precipitation }}mm</span>
       </div>
       <div class="detail-item">
-        <span class="label">风力:</span>
-        <span class="value">{{ weather.windSpeed }}km/h</span>
+        <span class="label">云量:</span>
+        <span class="value">{{ weather.cloudCover }}%</span>
       </div>
       <div class="detail-item">
         <span class="label">风向:</span>
         <span class="value">{{ weather.windDirection }}</span>
       </div>
       <div class="detail-item">
-        <span class="label">云量:</span>
-        <span class="value">{{ weather.cloudCover }}%</span>
+        <span class="label">风力:</span>
+        <span class="value">{{ weather.windSpeed }}km/h</span>
       </div>
     </div>
 
@@ -292,6 +292,7 @@ function handleCardClick() {
 
 .label {
   color: #666;
+  font-size: small;
 }
 
 .value {

@@ -1,12 +1,13 @@
 <template>
   <div class="app">
     <div class="app-header no-print">
-      <div class="header-left" @click="showAbout">
+      <div class="header-left" @click="showAbout" title="关于天气小鸭">
         <h1>
           天气小鸭 · 暑假天气日历
           <span v-if="headerProvince || headerCity" class="title-location">（{{ headerProvince }}<template v-if="headerProvince && headerCity"> · </template>{{ headerCity }}）</span>
         </h1>
       </div>
+     
       <div class="header-right" :class="{ 'header-right--hidden': !isHeaderRightVisible }">
         <div class="toolbar">
           <t-input
@@ -77,8 +78,8 @@
           <span v-if="isDefaultLocation" class="location-note">（默认位置）</span>
         </div>
         <div class="footer-author">
-          <span class="author-info">
-            作者：杨若即 · 
+          <span class="author-info"  @click="showAbout" title="关于天气小鸭">
+            ©️版权所有：杨若即 · 
             <a href="mailto:yangruoji@outlook.com" class="email-link">yangruoji@outlook.com</a>
           </span>
           <a 
@@ -517,6 +518,7 @@ onUnmounted(() => {
 
 .header-left:hover {
   opacity: 0.8;
+  color: #0052d9;
 }
 
 .header-left h1 {
@@ -599,6 +601,11 @@ onUnmounted(() => {
     display: flex;
     align-items: center;
     gap: 4px;
+  }
+
+  .author-info:hover {
+    cursor: pointer;
+    color: #0052d9;
   }
 
   .email-link {
