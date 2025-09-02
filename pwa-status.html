@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PWA状态检查</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; }
+        .status { padding: 10px; margin: 10px 0; border-radius: 4px; }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        .warning { background: #fff3cd; color: #856404; }
+        .info { background: #d1ecf1; color: #0c5460; }
+        button { background: #4A90E2; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; margin: 5px; }
+        .section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 8px; }
+    </style>
+</head>
+<body>
+    <h1>🦆 天气小鸭 PWA 状态</h1>
+    
+    <div class="section">
+        <h3>Service Worker</h3>
+        <div id="sw-status" class="status info">检查中...</div>
+        <button onclick="checkServiceWorker()">重新检查</button>
+    </div>
+    
+    <div class="section">
+        <h3>Manifest</h3>
+        <div id="manifest-status" class="status info">检查中...</div>
+        <button onclick="checkManifest()">重新检查</button>
+    </div>
+    
+    <div class="section">
+        <h3>安装状态</h3>
+        <div id="install-status" class="status info">等待中...</div>
+        <button id="install-btn" onclick="installApp()" disabled>安装应用</button>
+    </div>
+    
+    <div class="section">
+        <h3>浏览器支持</h3>
+        <div id="support-status" class="status info">检查中...</div>
+    </div>
+
+    <script>
+        let deferredPrompt;
+        
+        function checkServiceWorker() {
+            const statusEl = document.getElementById('sw-status');
+            
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.getRegistration()
+                    .then(registration => {
+                        if (registration) {
+                            statusEl.className = 'status success';
+                            statusEl.innerHTML = `✅ Service Worker 已注册<br>作用域: ${registration.scope}`;
+                        } else {
+                            statusEl.className = 'status warning';
+                            statusEl.textContent = '⚠️ Service Worker 未注册';
+                        }
+                    })
+                    .catch(error => {
+                        statusEl.className = 'status error';
+                        statusEl.textContent = '❌ Service Worker 检查失败: ' + error.message;
+                    });
+            } else {
+                statusEl.className = 'status error';
+                statusEl.textContent = '❌ 浏览器不支持 Service Worker';
+            }
+        }
+        
+        function checkManifest() {
+            const statusEl = document.getElementById('manifest-status');
+            
+            fetch('/manifest.json')
+                .then(response => {
+                    if (response.ok) {
+                        return response.json();
+                    }
+                    throw new Error('Manifest 加载失败');
+                })
+                .then(manifest => {
+                    statusEl.className = 'status success';
+                    statusEl.innerHTML = `✅ Manifest 已加载<br>应用名称: ${manifest.name}<br>图标数量: ${manifest.icons.length}`;
+                })
+                .catch(error => {
+                    statusEl.className = 'status error';
+                    statusEl.textContent = '❌ Manifest 检查失败: ' + error.message;
+                });
+        }
+        
+        function checkBrowserSupport() {
+            const statusEl = document.getElementById('support-status');
+            const features = [];
+            
+            if ('serviceWorker' in navigator) features.push('✅ Service Worker');
+            else features.push('❌ Service Worker');
+            
+            if ('PushManager' in window) features.push('✅ Push API');
+            else features.push('❌ Push API');
+            
+            if ('Notification' in window) features.push('✅ Notifications');
+            else features.push('❌ Notifications');
+            
+            if ('caches' in window) features.push('✅ Cache API');
+            else features.push('❌ Cache API');
+            
+            statusEl.className = 'status info';
+            statusEl.innerHTML = features.join('<br>');
+        }
+        
+        function installApp() {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                deferredPrompt.userChoice.then(choiceResult => {
+                    const statusEl = document.getElementById('install-status');
+                    if (choiceResult.outcome === 'accepted') {
+                        statusEl.className = 'status success';
+                        statusEl.textContent = '✅ 用户接受了安装';
+                    } else {
+                        statusEl.className = 'status warning';
+                        statusEl.textContent = '⚠️ 用户拒绝了安装';
+                    }
+                    deferredPrompt = null;
+                    document.getElementById('install-btn').disabled = true;
+                });
+            }
+        }
+        
+        // 监听安装提示事件
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            
+            const statusEl = document.getElementById('install-status');
+            statusEl.className = 'status success';
+            statusEl.textContent = '✅ 应用可以安装';
+            document.getElementById('install-btn').disabled = false;
+        });
+        
+        // 监听应用安装事件
+        window.addEventListener('appinstalled', () => {
+            const statusEl = document.getElementById('install-status');
+            statusEl.className = 'status success';
+            statusEl.textContent = '🎉 应用已成功安装！';
+        });
+        
+        // 页面加载时执行检查
+        window.addEventListener('load', () => {
+            checkServiceWorker();
+            checkManifest();
+            checkBrowserSupport();
+        });
+    </script>
+</body>
+</html>

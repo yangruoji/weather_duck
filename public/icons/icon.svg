@@ -1,0 +1,38 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- 背景圆形 -->
+  <circle cx="256" cy="256" r="256" fill="#4A90E2"/>
+  
+  <!-- 小鸭子身体 -->
+  <ellipse cx="256" cy="300" rx="80" ry="60" fill="#FFD700"/>
+  
+  <!-- 小鸭子头部 -->
+  <circle cx="256" cy="200" r="50" fill="#FFD700"/>
+  
+  <!-- 鸭嘴 -->
+  <ellipse cx="280" cy="210" rx="20" ry="8" fill="#FF8C00"/>
+  
+  <!-- 眼睛 -->
+  <circle cx="245" cy="190" r="6" fill="#000"/>
+  <circle cx="247" cy="188" r="2" fill="#FFF"/>
+  
+  <!-- 翅膀 -->
+  <ellipse cx="220" cy="280" rx="25" ry="35" fill="#FFA500" transform="rotate(-20 220 280)"/>
+  
+  <!-- 天气元素 - 云朵 -->
+  <ellipse cx="150" cy="120" rx="30" ry="20" fill="#FFF" opacity="0.8"/>
+  <ellipse cx="170" cy="110" rx="25" ry="18" fill="#FFF" opacity="0.8"/>
+  <ellipse cx="130" cy="110" rx="20" ry="15" fill="#FFF" opacity="0.8"/>
+  
+  <!-- 太阳光芒 -->
+  <g stroke="#FFE55C" stroke-width="4" stroke-linecap="round" opacity="0.7">
+    <line x1="380" y1="100" x2="395" y2="85"/>
+    <line x1="400" y1="120" x2="420" y2="120"/>
+    <line x1="380" y1="140" x2="395" y2="155"/>
+    <line x1="360" y1="120" x2="340" y2="120"/>
+    <line x1="360" y1="100" x2="345" y2="85"/>
+    <line x1="360" y1="140" x2="345" y2="155"/>
+  </g>
+  
+  <!-- 太阳 -->
+  <circle cx="370" cy="120" r="25" fill="#FFE55C"/>
+</svg>

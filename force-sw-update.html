@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>强制更新Service Worker</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 600px; margin: 50px auto; padding: 20px; }
+        .step { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 8px; }
+        .success { background: #d4edda; border-color: #c3e6cb; }
+        .error { background: #f8d7da; border-color: #f5c6cb; }
+        .warning { background: #fff3cd; border-color: #ffeaa7; }
+        button { background: #dc3545; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; margin: 5px; }
+        .success-btn { background: #28a745; }
+        .log { background: #f8f9fa; padding: 10px; border-radius: 4px; font-family: monospace; font-size: 12px; max-height: 300px; overflow-y: auto; margin: 10px 0; }
+    </style>
+</head>
+<body>
+    <h1>🔧 Service Worker 强制更新工具</h1>
+    
+    <div class="step warning">
+        <h3>⚠️ 注意</h3>
+        <p>这个工具将完全清除并重新注册Service Worker，解决缓存冲突问题。</p>
+    </div>
+    
+    <div class="step">
+        <h3>步骤1: 检查当前状态</h3>
+        <div id="current-status">检查中...</div>
+        <button onclick="checkCurrentStatus()">重新检查</button>
+    </div>
+    
+    <div class="step">
+        <h3>步骤2: 清除所有缓存和Service Worker</h3>
+        <div id="clear-status">等待操作</div>
+        <button onclick="clearEverything()">清除所有</button>
+    </div>
+    
+    <div class="step">
+        <h3>步骤3: 注册新的Service Worker</h3>
+        <div id="register-status">等待操作</div>
+        <button onclick="registerNewSW()" class="success-btn">注册新SW</button>
+    </div>
+    
+    <div class="step">
+        <h3>步骤4: 验证修复</h3>
+        <div id="verify-status">等待操作</div>
+        <button onclick="verifyFix()" class="success-btn">验证修复</button>
+    </div>
+    
+    <div class="step">
+        <h3>操作日志</h3>
+        <div id="log" class="log">等待操作...<br></div>
+        <button onclick="clearLog()">清除日志</button>
+        <button onclick="goToMainApp()" class="success-btn">返回主应用</button>
+    </div>
+
+    <script>
+        function log(message) {
+            const timestamp = new Date().toLocaleTimeString();
+            const logEl = document.getElementById('log');
+            logEl.innerHTML += `[${timestamp}] ${message}<br>`;
+            logEl.scrollTop = logEl.scrollHeight;
+            console.log(message);
+        }
+        
+        function clearLog() {
+            document.getElementById('log').innerHTML = '日志已清除<br>';
+        }
+        
+        async function checkCurrentStatus() {
+            const statusEl = document.getElementById('current-status');
+            
+            try {
+                // 检查Service Worker
+                const registration = await navigator.serviceWorker.getRegistration();
+                
+                // 检查缓存
+                const cacheNames = await caches.keys();
+                
+                statusEl.innerHTML = `
+                    Service Worker: ${registration ? '已注册' : '未注册'}<br>
+                    ${registration ? `作用域: ${registration.scope}<br>` : ''}
+                    缓存数量: ${cacheNames.length}<br>
+                    缓存列表: ${cacheNames.join(', ') || '无'}
+                `;
+                
+                log(`当前状态 - SW: ${registration ? '已注册' : '未注册'}, 缓存: ${cacheNames.length}个`);
+            } catch (error) {
+                statusEl.innerHTML = `检查失败: ${error.message}`;
+                log(`状态检查失败: ${error.message}`);
+            }
+        }
+        
+        async function clearEverything() {
+            const statusEl = document.getElementById('clear-status');
+            
+            try {
+                // 1. 注销所有Service Worker
+                const registrations = await navigator.serviceWorker.getRegistrations();
+                for (let registration of registrations) {
+                    await registration.unregister();
+                    log(`已注销Service Worker: ${registration.scope}`);
+                }
+                
+                // 2. 清除所有缓存
+                const cacheNames = await caches.keys();
+                for (let cacheName of cacheNames) {
+                    await caches.delete(cacheName);
+                    log(`已删除缓存: ${cacheName}`);
+                }
+                
+                statusEl.className = 'step success';
+                statusEl.innerHTML = `
+                    <h3>步骤2: 清除所有缓存和Service Worker</h3>
+                    ✅ 已清除完成<br>
+                    注销的SW: ${registrations.length}个<br>
+                    删除的缓存: ${cacheNames.length}个
+                `;
+                
+                log(`清除完成 - SW: ${registrations.length}个, 缓存: ${cacheNames.length}个`);
+            } catch (error) {
+                statusEl.className = 'step error';
+                statusEl.innerHTML = `<h3>步骤2: 清除所有缓存和Service Worker</h3>❌ 清除失败: ${error.message}`;
+                log(`清除失败: ${error.message}`);
+            }
+        }
+        
+        async function registerNewSW() {
+            const statusEl = document.getElementById('register-status');
+            
+            try {
+                // 注册新的Service Worker
+                const registration = await navigator.serviceWorker.register('/sw-simple.js');
+                
+                // 等待Service Worker激活
+                await new Promise((resolve) => {
+                    if (registration.active) {
+                        resolve();
+                    } else {
+                        registration.addEventListener('updatefound', () => {
+                            const newWorker = registration.installing;
+                            newWorker.addEventListener('statechange', () => {
+                                if (newWorker.state === 'activated') {
+                                    resolve();
+                                }
+                            });
+                        });
+                    }
+                });
+                
+                statusEl.className = 'step success';
+                statusEl.innerHTML = `
+                    <h3>步骤3: 注册新的Service Worker</h3>
+                    ✅ 新Service Worker已注册并激活<br>
+                    作用域: ${registration.scope}<br>
+                    状态: ${registration.active ? '活跃' : '等待激活'}
+                `;
+                
+                log(`新Service Worker注册成功: ${registration.scope}`);
+            } catch (error) {
+                statusEl.className = 'step error';
+                statusEl.innerHTML = `<h3>步骤3: 注册新的Service Worker</h3>❌ 注册失败: ${error.message}`;
+                log(`Service Worker注册失败: ${error.message}`);
+            }
+        }
+        
+        async function verifyFix() {
+            const statusEl = document.getElementById('verify-status');
+            
+            try {
+                // 测试缓存功能
+                const testUrl = '/manifest.json';
+                const response = await fetch(testUrl);
+                
+                if (response.ok) {
+                    // 检查是否有缓存错误
+                    const cache = await caches.open('weather-diary-v2');
+                    await cache.put(testUrl, response.clone());
+                    
+                    statusEl.className = 'step success';
+                    statusEl.innerHTML = `
+                        <h3>步骤4: 验证修复</h3>
+                        ✅ 修复验证成功！<br>
+                        缓存功能正常<br>
+                        无chrome-extension错误
+                    `;
+                    
+                    log('修复验证成功 - 缓存功能正常');
+                } else {
+                    throw new Error('测试请求失败');
+                }
+            } catch (error) {
+                statusEl.className = 'step error';
+                statusEl.innerHTML = `<h3>步骤4: 验证修复</h3>❌ 验证失败: ${error.message}`;
+                log(`修复验证失败: ${error.message}`);
+            }
+        }
+        
+        function goToMainApp() {
+            window.location.href = '/';
+        }
+        
+        // 页面加载时自动检查状态
+        window.addEventListener('load', () => {
+            log('Service Worker强制更新工具已加载');
+            checkCurrentStatus();
+        });
+    </script>
+</body>
+</html>

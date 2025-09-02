@@ -5,14 +5,23 @@
     <!-- Favicon配置 -->
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.svg" />
-    <link rel="manifest" href="/site.webmanifest" />
+    <link rel="manifest" href="/manifest.json" />
     <meta name="theme-color" content="#4A90E2" />
     <meta name="description" content="Weather Duck - 记录天气与心情的日记应用" />
+    <!-- PWA Meta Tags -->
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="天气小鸭">
+    <meta name="msapplication-TileColor" content="#4A90E2">
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>天气小鸭 - 暑假天气日历</title>
   </head>
   <body>
     <div id="app"></div>
+    <!-- 先执行Service Worker清理 -->
+    <script src="/cleanup-sw.js"></script>
+    <!-- 然后加载主应用 -->
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

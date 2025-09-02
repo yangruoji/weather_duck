@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PWA功能测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        .warning { background: #fff3cd; color: #856404; }
+        button {
+            background: #4A90E2;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #357ABD;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+    <h1>天气小鸭 PWA 功能测试</h1>
+    
+    <div class="test-section">
+        <h2>1. Service Worker 状态</h2>
+        <div id="sw-status" class="status">检查中...</div>
+        <button onclick="registerSW()">注册 Service Worker</button>
+        <button onclick="unregisterSW()">注销 Service Worker</button>
+    </div>
+    
+    <div class="test-section">
+        <h2>2. 安装提示</h2>
+        <div id="install-status" class="status">等待安装提示...</div>
+        <button id="install-btn" onclick="installApp()" disabled>安装应用</button>
+    </div>
+    
+    <div class="test-section">
+        <h2>3. 通知权限</h2>
+        <div id="notification-status" class="status">检查中...</div>
+        <button onclick="requestNotification()">请求通知权限</button>
+        <button onclick="sendTestNotification()">发送测试通知</button>
+    </div>
+    
+    <div class="test-section">
+        <h2>4. 网络状态</h2>
+        <div id="network-status" class="status">在线</div>
+        <button onclick="simulateOffline()">模拟离线</button>
+    </div>
+    
+    <div class="test-section">
+        <h2>5. 缓存测试</h2>
+        <div id="cache-status" class="status">未测试</div>
+        <button onclick="testCache()">测试缓存</button>
+        <button onclick="clearCache()">清除缓存</button>
+    </div>
+
+    <script>
+        let deferredPrompt;
+        
+        // 检查 Service Worker 状态
+        function checkSWStatus() {
+            const statusEl = document.getElementById('sw-status');
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.getRegistration().then(registration => {
+                    if (registration) {
+                        statusEl.className = 'status success';
+                        statusEl.textContent = 'Service Worker 已注册';
+                    } else {
+                        statusEl.className = 'status warning';
+                        statusEl.textContent = 'Service Worker 未注册';
+                    }
+                });
+            } else {
+                statusEl.className = 'status error';
+                statusEl.textContent = '浏览器不支持 Service Worker';
+            }
+        }
+        
+        // 注册 Service Worker
+        async function registerSW() {
+            if ('serviceWorker' in navigator) {
+                try {
+                    const registration = await navigator.serviceWorker.register('/sw.js');
+                    document.getElementById('sw-status').className = 'status success';
+                    document.getElementById('sw-status').textContent = 'Service Worker 注册成功';
+                } catch (error) {
+                    document.getElementById('sw-status').className = 'status error';
+                    document.getElementById('sw-status').textContent = 'Service Worker 注册失败: ' + error.message;
+                }
+            }
+        }
+        
+        // 注销 Service Worker
+        async function unregisterSW() {
+            if ('serviceWorker' in navigator) {
+                const registration = await navigator.serviceWorker.getRegistration();
+                if (registration) {
+                    await registration.unregister();
+                    document.getElementById('sw-status').className = 'status warning';
+                    document.getElementById('sw-status').textContent = 'Service Worker 已注销';
+                }
+            }
+        }
+        
+        // 检查安装提示
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            document.getElementById('install-status').className = 'status success';
+            document.getElementById('install-status').textContent = '可以安装应用';
+            document.getElementById('install-btn').disabled = false;
+        });
+        
+        // 安装应用
+        async function installApp() {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                const choiceResult = await deferredPrompt.userChoice;
+                if (choiceResult.outcome === 'accepted') {
+                    document.getElementById('install-status').className = 'status success';
+                    document.getElementById('install-status').textContent = '用户接受了安装';
+                } else {
+                    document.getElementById('install-status').className = 'status warning';
+                    document.getElementById('install-status').textContent = '用户拒绝了安装';
+                }
+                deferredPrompt = null;
+                document.getElementById('install-btn').disabled = true;
+            }
+        }
+        
+        // 检查通知权限
+        function checkNotificationStatus() {
+            const statusEl = document.getElementById('notification-status');
+            if ('Notification' in window) {
+                const permission = Notification.permission;
+                if (permission === 'granted') {
+                    statusEl.className = 'status success';
+                    statusEl.textContent = '通知权限已授予';
+                } else if (permission === 'denied') {
+                    statusEl.className = 'status error';
+                    statusEl.textContent = '通知权限被拒绝';
+                } else {
+                    statusEl.className = 'status warning';
+                    statusEl.textContent = '通知权限未请求';
+                }
+            } else {
+                statusEl.className = 'status error';
+                statusEl.textContent = '浏览器不支持通知';
+            }
+        }
+        
+        // 请求通知权限
+        async function requestNotification() {
+            if ('Notification' in window) {
+                const permission = await Notification.requestPermission();
+                checkNotificationStatus();
+            }
+        }
+        
+        // 发送测试通知
+        function sendTestNotification() {
+            if ('Notification' in window && Notification.permission === 'granted') {
+                new Notification('天气小鸭测试', {
+                    body: '这是一个测试通知',
+                    icon: '/icons/icon-192x192.png'
+                });
+            }
+        }
+        
+        // 检查网络状态
+        function checkNetworkStatus() {
+            const statusEl = document.getElementById('network-status');
+            if (navigator.onLine) {
+                statusEl.className = 'status success';
+                statusEl.textContent = '在线';
+            } else {
+                statusEl.className = 'status error';
+                statusEl.textContent = '离线';
+            }
+        }
+        
+        // 模拟离线
+        function simulateOffline() {
+            // 这只是一个演示，实际上无法真正模拟离线状态
+            alert('请在开发者工具的 Network 标签页中选择 "Offline" 来模拟离线状态');
+        }
+        
+        // 测试缓存
+        async function testCache() {
+            const statusEl = document.getElementById('cache-status');
+            try {
+                const cache = await caches.open('weather-diary-v1');
+                const keys = await cache.keys();
+                statusEl.className = 'status success';
+                statusEl.textContent = `缓存中有 ${keys.length} 个文件`;
+            } catch (error) {
+                statusEl.className = 'status error';
+                statusEl.textContent = '缓存测试失败: ' + error.message;
+            }
+        }
+        
+        // 清除缓存
+        async function clearCache() {
+            const statusEl = document.getElementById('cache-status');
+            try {
+                const cacheNames = await caches.keys();
+                await Promise.all(cacheNames.map(name => caches.delete(name)));
+                statusEl.className = 'status success';
+                statusEl.textContent = '缓存已清除';
+            } catch (error) {
+                statusEl.className = 'status error';
+                statusEl.textContent = '清除缓存失败: ' + error.message;
+            }
+        }
+        
+        // 监听网络状态变化
+        window.addEventListener('online', checkNetworkStatus);
+        window.addEventListener('offline', checkNetworkStatus);
+        
+        // 页面加载时检查状态
+        window.addEventListener('load', () => {
+            checkSWStatus();
+            checkNotificationStatus();
+            checkNetworkStatus();
+        });
+    </script>
+</body>
+</html>

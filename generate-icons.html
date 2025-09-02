@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>生成PWA图标</title>
+</head>
+<body>
+    <canvas id="canvas" width="512" height="512" style="border: 1px solid #ccc;"></canvas>
+    <br><br>
+    <button onclick="generateIcons()">生成所有尺寸图标</button>
+    <div id="downloads"></div>
+
+    <script>
+        function drawIcon(canvas, size) {
+            const ctx = canvas.getContext('2d');
+            canvas.width = size;
+            canvas.height = size;
+            
+            // 清除画布
+            ctx.clearRect(0, 0, size, size);
+            
+            // 背景圆形
+            ctx.fillStyle = '#4A90E2';
+            ctx.beginPath();
+            ctx.arc(size/2, size/2, size/2, 0, 2 * Math.PI);
+            ctx.fill();
+            
+            // 小鸭子身体
+            ctx.fillStyle = '#FFD700';
+            ctx.beginPath();
+            ctx.ellipse(size/2, size*0.59, size*0.16, size*0.12, 0, 0, 2 * Math.PI);
+            ctx.fill();
+            
+            // 小鸭子头部
+            ctx.beginPath();
+            ctx.arc(size/2, size*0.39, size*0.1, 0, 2 * Math.PI);
+            ctx.fill();
+            
+            // 鸭嘴
+            ctx.fillStyle = '#FF8C00';
+            ctx.beginPath();
+            ctx.ellipse(size*0.55, size*0.41, size*0.04, size*0.016, 0, 0, 2 * Math.PI);
+            ctx.fill();
+            
+            // 眼睛
+            ctx.fillStyle = '#000';
+            ctx.beginPath();
+            ctx.arc(size*0.48, size*0.37, size*0.012, 0, 2 * Math.PI);
+            ctx.fill();
+            
+            // 眼睛高光
+            ctx.fillStyle = '#FFF';
+            ctx.beginPath();
+            ctx.arc(size*0.484, size*0.367, size*0.004, 0, 2 * Math.PI);
+            ctx.fill();
+            
+            // 翅膀
+            ctx.fillStyle = '#FFA500';
+            ctx.save();
+            ctx.translate(size*0.43, size*0.55);
+            ctx.rotate(-0.35);
+            ctx.beginPath();
+            ctx.ellipse(0, 0, size*0.05, size*0.07, 0, 0, 2 * Math.PI);
+            ctx.fill();
+            ctx.restore();
+            
+            // 云朵
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+            ctx.beginPath();
+            ctx.ellipse(size*0.29, size*0.23, size*0.06, size*0.04, 0, 0, 2 * Math.PI);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.ellipse(size*0.33, size*0.21, size*0.05, size*0.035, 0, 0, 2 * Math.PI);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.ellipse(size*0.25, size*0.21, size*0.04, size*0.03, 0, 0, 2 * Math.PI);
+            ctx.fill();
+            
+            // 太阳
+            ctx.fillStyle = '#FFE55C';
+            ctx.beginPath();
+            ctx.arc(size*0.72, size*0.23, size*0.05, 0, 2 * Math.PI);
+            ctx.fill();
+            
+            // 太阳光芒
+            ctx.strokeStyle = '#FFE55C';
+            ctx.lineWidth = size*0.008;
+            ctx.lineCap = 'round';
+            const sunX = size*0.72;
+            const sunY = size*0.23;
+            const rayLength = size*0.03;
+            
+            for (let i = 0; i < 6; i++) {
+                const angle = (i * Math.PI) / 3;
+                const startX = sunX + Math.cos(angle) * size*0.06;
+                const startY = sunY + Math.sin(angle) * size*0.06;
+                const endX = sunX + Math.cos(angle) * (size*0.06 + rayLength);
+                const endY = sunY + Math.sin(angle) * (size*0.06 + rayLength);
+                
+                ctx.beginPath();
+                ctx.moveTo(startX, startY);
+                ctx.lineTo(endX, endY);
+                ctx.stroke();
+            }
+        }
+        
+        function downloadCanvas(canvas, filename) {
+            const link = document.createElement('a');
+            link.download = filename;
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+        }
+        
+        function generateIcons() {
+            const sizes = [72, 96, 128, 144, 152, 192, 384, 512];
+            const canvas = document.getElementById('canvas');
+            const downloads = document.getElementById('downloads');
+            downloads.innerHTML = '';
+            
+            sizes.forEach(size => {
+                drawIcon(canvas, size);
+                downloadCanvas(canvas, `icon-${size}x${size}.png`);
+                
+                const img = new Image();
+                img.src = canvas.toDataURL('image/png');
+                img.style.width = '64px';
+                img.style.height = '64px';
+                img.style.margin = '5px';
+                img.style.border = '1px solid #ccc';
+                img.title = `${size}x${size}`;
+                downloads.appendChild(img);
+            });
+            
+            // 恢复显示512x512版本
+            drawIcon(canvas, 512);
+        }
+        
+        // 初始绘制
+        drawIcon(document.getElementById('canvas'), 512);
+    </script>
+</body>
+</html>

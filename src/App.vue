@@ -1,5 +1,11 @@
 <template>
   <div class="app">
+    <!-- 离线状态指示器 -->
+    <OfflineIndicator @online="handleOnline" @offline="handleOffline" />
+    
+    <!-- PWA安装提示 -->
+    <PWAInstall @app-installed="handleAppInstalled" />
+    
     <div class="app-header no-print">
       <div class="header-left" @click="showAbout" title="关于天气小鸭">
         <h1>
@@ -130,6 +136,8 @@ import WeatherLineChart from './components/WeatherLineChart.vue'
 import WeatherDiaryEdit from './components/WeatherDiaryEdit.vue'
 import WeatherDiaryView from './components/WeatherDiaryView.vue'
 import AboutDialog from './components/AboutDialog.vue'
+import OfflineIndicator from './components/OfflineIndicator.vue'
+import PWAInstall from './components/PWAInstall.vue'
 import { WeatherApiService } from './services/weatherApi'
 import { OptimizedSupabaseDiaryService } from './services/optimizedSupabaseDiary'
 import type { WeatherData } from './types/weather'
@@ -429,6 +437,22 @@ async function handleDiarySaved(date: string, content: string) {
 // 显示About对话框
 function showAbout() {
   aboutVisible.value = true
+}
+
+// PWA事件处理
+function handleOnline() {
+  console.log('网络已连接')
+  // 可以在这里重新获取数据或显示提示
+}
+
+function handleOffline() {
+  console.log('网络已断开')
+  // 可以在这里显示离线提示
+}
+
+function handleAppInstalled() {
+  console.log('PWA应用已安装')
+  // 可以在这里显示安装成功提示或进行其他操作
 }
 
 // 滚动处理函数 - 防抖+方向锁定，彻底避免抖动

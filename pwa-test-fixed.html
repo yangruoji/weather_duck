@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PWA修复测试</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
+        .test-item { margin: 15px 0; padding: 15px; border: 1px solid #ddd; border-radius: 8px; }
+        .success { background: #d4edda; border-color: #c3e6cb; }
+        .error { background: #f8d7da; border-color: #f5c6cb; }
+        .warning { background: #fff3cd; border-color: #ffeaa7; }
+        .info { background: #d1ecf1; border-color: #bee5eb; }
+        button { background: #4A90E2; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; margin: 5px; }
+        .log { background: #f8f9fa; padding: 10px; border-radius: 4px; font-family: monospace; font-size: 12px; max-height: 200px; overflow-y: auto; }
+    </style>
+</head>
+<body>
+    <h1>🦆 PWA修复验证</h1>
+    
+    <div class="test-item info">
+        <h3>1. Service Worker状态</h3>
+        <div id="sw-status">检查中...</div>
+        <button onclick="testServiceWorker()">测试Service Worker</button>
+        <button onclick="unregisterSW()">注销SW</button>
+        <button onclick="registerNewSW()">注册新SW</button>
+    </div>
+    
+    <div class="test-item info">
+        <h3>2. 缓存测试</h3>
+        <div id="cache-status">未测试</div>
+        <button onclick="testCache()">测试缓存</button>
+        <button onclick="clearAllCaches()">清除所有缓存</button>
+    </div>
+    
+    <div class="test-item info">
+        <h3>3. 安装提示测试</h3>
+        <div id="install-status">等待中...</div>
+        <button onclick="triggerInstall()">触发安装</button>
+    </div>
+    
+    <div class="test-item info">
+        <h3>4. 控制台日志</h3>
+        <div id="console-log" class="log">等待日志...</div>
+        <button onclick="clearLog()">清除日志</button>
+    </div>
+
+    <script>
+        let deferredPrompt;
+        const logElement = document.getElementById('console-log');
+        
+        function log(message) {
+            const timestamp = new Date().toLocaleTimeString();
+            logElement.innerHTML += `[${timestamp}] ${message}<br>`;
+            logElement.scrollTop = logElement.scrollHeight;
+            console.log(message);
+        }
+        
+        function clearLog() {
+            logElement.innerHTML = '日志已清除<br>';
+        }
+        
+        async function testServiceWorker() {
+            const statusEl = document.getElementById('sw-status');
+            
+            try {
+                if ('serviceWorker' in navigator) {
+                    const registration = await navigator.serviceWorker.getRegistration();
+                    if (registration) {
+                        statusEl.className = 'test-item success';
+                        statusEl.innerHTML = `
+                            <h3>1. Service Worker状态</h3>
+                            ✅ Service Worker已注册<br>
+                            作用域: ${registration.scope}<br>
+                            状态: ${registration.active ? '活跃' : '非活跃'}
+                        `;
+                        log('Service Worker状态正常');
+                    } else {
+                        statusEl.className = 'test-item warning';
+                        statusEl.innerHTML = '<h3>1. Service Worker状态</h3>⚠️ Service Worker未注册';
+                        log('Service Worker未注册');
+                    }
+                } else {
+                    statusEl.className = 'test-item error';
+                    statusEl.innerHTML = '<h3>1. Service Worker状态</h3>❌ 浏览器不支持Service Worker';
+                    log('浏览器不支持Service Worker');
+                }
+            } catch (error) {
+                statusEl.className = 'test-item error';
+                statusEl.innerHTML = `<h3>1. Service Worker状态</h3>❌ 检查失败: ${error.message}`;
+                log('Service Worker检查失败: ' + error.message);
+            }
+        }
+        
+        async function testCache() {
+            const statusEl = document.getElementById('cache-status');
+            
+            try {
+                const cacheNames = await caches.keys();
+                log(`发现 ${cacheNames.length} 个缓存: ${cacheNames.join(', ')}`);
+                
+                if (cacheNames.length > 0) {
+                    const cache = await caches.open(cacheNames[0]);
+                    const keys = await cache.keys();
+                    
+                    statusEl.innerHTML = `
+                        ✅ 缓存正常<br>
+                        缓存数量: ${cacheNames.length}<br>
+                        缓存项目: ${keys.length}<br>
+                        缓存名称: ${cacheNames.join(', ')}
+                    `;
+                    log(`缓存 ${cacheNames[0]} 包含 ${keys.length} 个项目`);
+                } else {
+                    statusEl.innerHTML = '⚠️ 没有发现缓存';
+                    log('没有发现任何缓存');
+                }
+            } catch (error) {
+                statusEl.innerHTML = `❌ 缓存测试失败: ${error.message}`;
+                log('缓存测试失败: ' + error.message);
+            }
+        }
+        
+        async function clearAllCaches() {
+            try {
+                const cacheNames = await caches.keys();
+                await Promise.all(cacheNames.map(name => caches.delete(name)));
+                log(`已清除 ${cacheNames.length} 个缓存`);
+                document.getElementById('cache-status').innerHTML = '✅ 所有缓存已清除';
+            } catch (error) {
+                log('清除缓存失败: ' + error.message);
+            }
+        }
+        
+        async function unregisterSW() {
+            try {
+                const registration = await navigator.serviceWorker.getRegistration();
+                if (registration) {
+                    await registration.unregister();
+                    log('Service Worker已注销');
+                    document.getElementById('sw-status').innerHTML = '<h3>1. Service Worker状态</h3>✅ Service Worker已注销';
+                }
+            } catch (error) {
+                log('注销Service Worker失败: ' + error.message);
+            }
+        }
+        
+        async function registerNewSW() {
+            try {
+                const registration = await navigator.serviceWorker.register('/sw-simple.js');
+                log('新的Service Worker已注册');
+                document.getElementById('sw-status').innerHTML = '<h3>1. Service Worker状态</h3>✅ 新的Service Worker已注册';
+            } catch (error) {
+                log('注册新Service Worker失败: ' + error.message);
+            }
+        }
+        
+        function triggerInstall() {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                deferredPrompt.userChoice.then(choiceResult => {
+                    log(`安装选择: ${choiceResult.outcome}`);
+                    deferredPrompt = null;
+                });
+            } else {
+                log('没有可用的安装提示');
+            }
+        }
+        
+        // 监听安装提示
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            document.getElementById('install-status').innerHTML = '✅ 安装提示可用';
+            log('安装提示事件已捕获');
+        });
+        
+        // 监听应用安装
+        window.addEventListener('appinstalled', () => {
+            document.getElementById('install-status').innerHTML = '🎉 应用已安装';
+            log('应用已成功安装');
+        });
+        
+        // 监听Service Worker错误
+        navigator.serviceWorker.addEventListener('error', (error) => {
+            log('Service Worker错误: ' + error.message);
+        });
+        
+        // 页面加载时自动测试
+        window.addEventListener('load', () => {
+            log('页面加载完成，开始自动测试...');
+            testServiceWorker();
+            setTimeout(testCache, 1000);
+        });
+    </script>
+</body>
+</html>

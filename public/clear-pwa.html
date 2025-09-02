@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>清理PWA缓存</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            max-width: 500px; 
+            margin: 100px auto; 
+            padding: 20px; 
+            text-align: center;
+        }
+        .btn { 
+            background: #dc3545; 
+            color: white; 
+            border: none; 
+            padding: 15px 30px; 
+            border-radius: 8px; 
+            cursor: pointer; 
+            font-size: 16px;
+            margin: 10px;
+        }
+        .success { background: #28a745; }
+        .status { 
+            margin: 20px 0; 
+            padding: 15px; 
+            border-radius: 8px; 
+            background: #f8f9fa;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧹 PWA缓存清理工具</h1>
+    <p>如果遇到Service Worker缓存问题，请点击下面的按钮清理</p>
+    
+    <div id="status" class="status">准备清理...</div>
+    
+    <button class="btn" onclick="clearAll()">清理所有缓存和Service Worker</button>
+    <button class="btn success" onclick="goHome()">返回主页</button>
+
+    <script>
+        async function clearAll() {
+            const statusEl = document.getElementById('status');
+            
+            try {
+                statusEl.innerHTML = '🔄 正在清理...';
+                
+                // 1. 注销所有Service Worker
+                const registrations = await navigator.serviceWorker.getRegistrations();
+                for (let registration of registrations) {
+                    await registration.unregister();
+                }
+                
+                // 2. 清除所有缓存
+                const cacheNames = await caches.keys();
+                for (let cacheName of cacheNames) {
+                    await caches.delete(cacheName);
+                }
+                
+                // 3. 清除localStorage和sessionStorage
+                localStorage.clear();
+                sessionStorage.clear();
+                
+                statusEl.innerHTML = `
+                    ✅ 清理完成！<br>
+                    已注销 ${registrations.length} 个Service Worker<br>
+                    已删除 ${cacheNames.length} 个缓存<br>
+                    已清除本地存储<br><br>
+                    <strong>请刷新页面或返回主页</strong>
+                `;
+                
+                console.log('PWA缓存清理完成');
+                
+            } catch (error) {
+                statusEl.innerHTML = `❌ 清理失败: ${error.message}`;
+                console.error('清理失败:', error);
+            }
+        }
+        
+        function goHome() {
+            window.location.href = '/';
+        }
+        
+        // 页面加载时显示当前状态
+        window.addEventListener('load', async () => {
+            try {
+                const registrations = await navigator.serviceWorker.getRegistrations();
+                const cacheNames = await caches.keys();
+                
+                document.getElementById('status').innerHTML = `
+                    当前状态：<br>
+                    Service Worker: ${registrations.length} 个<br>
+                    缓存: ${cacheNames.length} 个
+                `;
+            } catch (error) {
+                document.getElementById('status').innerHTML = '无法检查状态';
+            }
+        });
+    </script>
+</body>
+</html>

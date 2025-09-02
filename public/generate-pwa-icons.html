@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>生成PWA图标</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        canvas { border: 1px solid #ccc; margin: 10px; }
+        button { padding: 10px 20px; margin: 10px; background: #4A90E2; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        .preview { display: flex; flex-wrap: wrap; gap: 10px; margin: 20px 0; }
+        .icon-item { text-align: center; }
+    </style>
+</head>
+<body>
+    <h1>天气小鸭 PWA 图标生成器</h1>
+    <button onclick="generateAllIcons()">生成并下载所有图标</button>
+    <button onclick="copyToClipboard()">复制SVG代码</button>
+    
+    <div class="preview" id="preview"></div>
+    
+    <textarea id="svgCode" style="width: 100%; height: 200px; margin: 20px 0;" readonly></textarea>
+
+    <script>
+        function createIcon(size) {
+            const canvas = document.createElement('canvas');
+            canvas.width = size;
+            canvas.height = size;
+            const ctx = canvas.getContext('2d');
+            
+            // 背景圆形
+            ctx.fillStyle = '#4A90E2';
+            ctx.beginPath();
+            ctx.arc(size/2, size/2, size/2, 0, 2 * Math.PI);
+            ctx.fill();
+            
+            // 小鸭子身体
+            ctx.fillStyle = '#FFD700';
+            ctx.beginPath();
+            ctx.ellipse(size/2, size*0.59, size*0.16, size*0.12, 0, 0, 2 * Math.PI);
+            ctx.fill();
+            
+            // 小鸭子头部
+            ctx.beginPath();
+            ctx.arc(size/2, size*0.39, size*0.1, 0, 2 * Math.PI);
+            ctx.fill();
+            
+            // 鸭嘴
+            ctx.fillStyle = '#FF8C00';
+            ctx.beginPath();
+            ctx.ellipse(size*0.55, size*0.41, size*0.04, size*0.016, 0, 0, 2 * Math.PI);
+            ctx.fill();
+            
+            // 眼睛
+            ctx.fillStyle = '#000';
+            ctx.beginPath();
+            ctx.arc(size*0.48, size*0.37, size*0.012, 0, 2 * Math.PI);
+            ctx.fill();
+            
+            // 眼睛高光
+            ctx.fillStyle = '#FFF';
+            ctx.beginPath();
+            ctx.arc(size*0.484, size*0.367, size*0.004, 0, 2 * Math.PI);
+            ctx.fill();
+            
+            // 翅膀
+            ctx.fillStyle = '#FFA500';
+            ctx.save();
+            ctx.translate(size*0.43, size*0.55);
+            ctx.rotate(-0.35);
+            ctx.beginPath();
+            ctx.ellipse(0, 0, size*0.05, size*0.07, 0, 0, 2 * Math.PI);
+            ctx.fill();
+            ctx.restore();
+            
+            // 云朵
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+            ctx.beginPath();
+            ctx.ellipse(size*0.29, size*0.23, size*0.06, size*0.04, 0, 0, 2 * Math.PI);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.ellipse(size*0.33, size*0.21, size*0.05, size*0.035, 0, 0, 2 * Math.PI);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.ellipse(size*0.25, size*0.21, size*0.04, size*0.03, 0, 0, 2 * Math.PI);
+            ctx.fill();
+            
+            // 太阳
+            ctx.fillStyle = '#FFE55C';
+            ctx.beginPath();
+            ctx.arc(size*0.72, size*0.23, size*0.05, 0, 2 * Math.PI);
+            ctx.fill();
+            
+            // 太阳光芒
+            ctx.strokeStyle = '#FFE55C';
+            ctx.lineWidth = size*0.008;
+            ctx.lineCap = 'round';
+            const sunX = size*0.72;
+            const sunY = size*0.23;
+            
+            for (let i = 0; i < 6; i++) {
+                const angle = (i * Math.PI) / 3;
+                const startX = sunX + Math.cos(angle) * size*0.06;
+                const startY = sunY + Math.sin(angle) * size*0.06;
+                const endX = sunX + Math.cos(angle) * (size*0.06 + size*0.03);
+                const endY = sunY + Math.sin(angle) * (size*0.06 + size*0.03);
+                
+                ctx.beginPath();
+                ctx.moveTo(startX, startY);
+                ctx.lineTo(endX, endY);
+                ctx.stroke();
+            }
+            
+            return canvas;
+        }
+        
+        function downloadCanvas(canvas, filename) {
+            const link = document.createElement('a');
+            link.download = filename;
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+        }
+        
+        function generateAllIcons() {
+            const sizes = [16, 32, 72, 96, 128, 144, 152, 192, 384, 512];
+            const preview = document.getElementById('preview');
+            preview.innerHTML = '';
+            
+            sizes.forEach(size => {
+                const canvas = createIcon(size);
+                downloadCanvas(canvas, `icon-${size}x${size}.png`);
+                
+                // 添加预览
+                const item = document.createElement('div');
+                item.className = 'icon-item';
+                
+                const previewCanvas = canvas.cloneNode();
+                const previewCtx = previewCanvas.getContext('2d');
+                previewCtx.drawImage(canvas, 0, 0);
+                previewCanvas.style.width = '64px';
+                previewCanvas.style.height = '64px';
+                
+                const label = document.createElement('div');
+                label.textContent = `${size}x${size}`;
+                label.style.fontSize = '12px';
+                
+                item.appendChild(previewCanvas);
+                item.appendChild(label);
+                preview.appendChild(item);
+            });
+            
+            alert('所有图标已生成并下载！请将下载的PNG文件放入 public/icons/ 目录中。');
+        }
+        
+        function copyToClipboard() {
+            const svgCode = `<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <circle cx="256" cy="256" r="256" fill="#4A90E2"/>
+  <ellipse cx="256" cy="300" rx="80" ry="60" fill="#FFD700"/>
+  <circle cx="256" cy="200" r="50" fill="#FFD700"/>
+  <ellipse cx="280" cy="210" rx="20" ry="8" fill="#FF8C00"/>
+  <circle cx="245" cy="190" r="6" fill="#000"/>
+  <circle cx="247" cy="188" r="2" fill="#FFF"/>
+  <ellipse cx="220" cy="280" rx="25" ry="35" fill="#FFA500" transform="rotate(-20 220 280)"/>
+  <ellipse cx="150" cy="120" rx="30" ry="20" fill="#FFF" opacity="0.8"/>
+  <ellipse cx="170" cy="110" rx="25" ry="18" fill="#FFF" opacity="0.8"/>
+  <ellipse cx="130" cy="110" rx="20" ry="15" fill="#FFF" opacity="0.8"/>
+  <circle cx="370" cy="120" r="25" fill="#FFE55C"/>
+  <g stroke="#FFE55C" stroke-width="4" stroke-linecap="round" opacity="0.7">
+    <line x1="380" y1="100" x2="395" y2="85"/>
+    <line x1="400" y1="120" x2="420" y2="120"/>
+    <line x1="380" y1="140" x2="395" y2="155"/>
+    <line x1="360" y1="120" x2="340" y2="120"/>
+    <line x1="360" y1="100" x2="345" y2="85"/>
+    <line x1="360" y1="140" x2="345" y2="155"/>
+  </g>
+</svg>`;
+            
+            document.getElementById('svgCode').value = svgCode;
+            navigator.clipboard.writeText(svgCode).then(() => {
+                alert('SVG代码已复制到剪贴板！');
+            });
+        }
+        
+        // 页面加载时显示SVG代码
+        window.onload = function() {
+            copyToClipboard();
+        };
+    </script>
+</body>
+</html>
