@@ -253,6 +253,7 @@ function handleVisibleChange(value: boolean) {
 <style scoped>
 .diary-view-content {
   padding: 0;
+  overflow: hidden;
 }
 
 .weather-summary {

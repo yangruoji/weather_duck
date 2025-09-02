@@ -114,6 +114,7 @@
       v-model:visible="diaryEditVisible"
       :weather="selectedWeather"
       @saved="handleDiarySaved"
+      @dateChange="handleEditDateChange"
     />
 
     <!-- About对话框 -->
@@ -390,6 +391,16 @@ function handleDateChange(date: string) {
   if (weather) {
     selectedWeather.value = weather
     // 保持当前对话框状态，只更新数据
+  }
+}
+
+// 处理编辑日期变化（上一天/下一天）
+function handleEditDateChange(date: string) {
+  const weather = weatherList.value.find(w => w.date === date)
+  if (weather) {
+    console.log('🔄 编辑组件日期变化:', date)
+    selectedWeather.value = weather
+    // 保持编辑对话框打开状态，只更新数据
   }
 }
 

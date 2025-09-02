@@ -41,10 +41,10 @@
 
       <!-- 城市信息 -->
       <div class="form-section">
-        <label class="form-label">城市位置</label>
+        <label class="form-label">具体位置</label>
         <t-input
           v-model="cityLocation"
-          placeholder="记录当时所在的城市"
+          placeholder="记录当时所在的具体地点"
           clearable
         />
       </div>
@@ -208,6 +208,12 @@
       <div class="diary-actions">
         <t-space>
           <t-button variant="outline" @click="handleClose" :disabled="saving">取消</t-button>
+                    <t-button variant="outline" @click="handlePreviousDay" :disabled="!hasPreviousDay || saving">
+            <template #icon><t-icon name="chevron-left" /></template>
+          </t-button>
+          <t-button variant="outline" @click="handleNextDay" :disabled="!hasNextDay || saving">
+            <template #icon><t-icon name="chevron-right" /></template>
+          </t-button>
           <t-button theme="danger" variant="outline" @click="handleDelete" v-if="hasExistingDiary" :disabled="saving">
             删除日记
           </t-button>
@@ -236,6 +242,7 @@ interface Props {
 interface Emits {
   (e: 'update:visible', value: boolean): void
   (e: 'saved', date: string, content: string): void
+  (e: 'dateChange', date: string): void
 }
 
 interface ImageFile {
@@ -287,6 +294,24 @@ const date = computed(() => {
   return DateUtils.formatFullDate(props.weather.date)
 })
 
+// 获取全局天气数据列表用于导航
+const globalWeatherList = computed(() => {
+  return (window as any).__weatherList || []
+})
+
+// 检查是否有上一天/下一天
+const hasPreviousDay = computed(() => {
+  if (!props.weather?.date || !globalWeatherList.value.length) return false
+  const currentIndex = globalWeatherList.value.findIndex((w: WeatherData) => w.date === props.weather.date)
+  return currentIndex > 0
+})
+
+const hasNextDay = computed(() => {
+  if (!props.weather?.date || !globalWeatherList.value.length) return false
+  const currentIndex = globalWeatherList.value.findIndex((w: WeatherData) => w.date === props.weather.date)
+  return currentIndex >= 0 && currentIndex < globalWeatherList.value.length - 1
+})
+
 // 上传配置
 // const uploadAction = 'data:' // 使用data URL，不实际上传到服务器
 
@@ -309,9 +334,21 @@ watch(() => props.visible, async (newVisible, oldVisible) => {
 watch(() => props.weather, async (newWeather, oldWeather) => {
   // 如果对话框已经打开且 weather 数据发生变化，重新加载
   if (props.visible && newWeather?.date && newWeather.date !== oldWeather?.date) {
+    console.log('🔄 Weather 数据变化，重新加载日记')
+    console.log('🔄 新日期:', newWeather.date, '旧日期:', oldWeather?.date)
+    // 强制重新加载日记数据
     await loadDiary()
   }
 }, { deep: true })
+
+// 专门监听日期变化的 watcher
+watch(() => props.weather?.date, async (newDate, oldDate) => {
+  if (props.visible && newDate && newDate !== oldDate) {
+    console.log('🔄 日期直接变化，重新加载日记')
+    console.log('🔄 新日期:', newDate, '旧日期:', oldDate)
+    await loadDiary()
+  }
+})
 
 // 重置表单
 function resetForm() {
@@ -589,18 +626,58 @@ async function handleSave() {
 async function handleDelete() {
   if (!props.weather || !props.weather.date) return
   
-  try {
-    await OptimizedSupabaseDiaryService.deleteDiary(props.weather.date)
-    emit('saved', props.weather.date, '')
-    
-    // 通知全局刷新
-    window.dispatchEvent(new CustomEvent('diary:updated', { 
-      detail: { date: props.weather.date, action: 'delete' } 
-    }))
-    
-    handleClose()
-  } catch (e) {
-    console.error('删除日记失败:', e)
+  // 显示确认对话框
+  const { DialogPlugin } = await import('tdesign-vue-next')
+  
+  const confirmDialog = DialogPlugin.confirm({
+    header: '确认删除',
+    body: `确定要删除 ${date.value} 的天气日记吗？删除后无法恢复。`,
+    theme: 'warning',
+    confirmBtn: {
+      content: '确认删除',
+      theme: 'danger'
+    },
+    cancelBtn: '取消',
+    onConfirm: async () => {
+      try {
+        await OptimizedSupabaseDiaryService.deleteDiary(props.weather.date)
+        emit('saved', props.weather.date, '')
+        
+        // 通知全局刷新
+        window.dispatchEvent(new CustomEvent('diary:updated', { 
+          detail: { date: props.weather.date, action: 'delete' } 
+        }))
+        
+        handleClose()
+        confirmDialog.destroy()
+      } catch (e) {
+        console.error('删除日记失败:', e)
+        confirmDialog.destroy()
+      }
+    },
+    onCancel: () => {
+      confirmDialog.destroy()
+    }
+  })
+}
+
+function handlePreviousDay() {
+  if (!hasPreviousDay.value) return
+  
+  const currentIndex = globalWeatherList.value.findIndex((w: WeatherData) => w.date === props.weather.date)
+  if (currentIndex > 0) {
+    const previousWeather = globalWeatherList.value[currentIndex - 1]
+    emit('dateChange', previousWeather.date)
+  }
+}
+
+function handleNextDay() {
+  if (!hasNextDay.value) return
+  
+  const currentIndex = globalWeatherList.value.findIndex((w: WeatherData) => w.date === props.weather.date)
+  if (currentIndex >= 0 && currentIndex < globalWeatherList.value.length - 1) {
+    const nextWeather = globalWeatherList.value[currentIndex + 1]
+    emit('dateChange', nextWeather.date)
   }
 }
 
@@ -852,7 +929,8 @@ function handleVisibleChange(value: boolean) {
 
 .diary-actions {
   display: flex;
-  justify-content: flex-end;
+  justify-content: space-between;
+  align-items: center;
   padding-top: 24px;
   border-top: 1px solid #eee;
 }

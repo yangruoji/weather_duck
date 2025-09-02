@@ -24,10 +24,10 @@
 
       <!-- 城市信息 -->
       <div class="form-section">
-        <label class="form-label">城市位置</label>
+        <label class="form-label">具体位置</label>
         <t-input
           v-model="cityLocation"
-          placeholder="记录当时所在的城市"
+          placeholder="记录当时所在的具体地点"
           clearable
         />
       </div>
@@ -194,6 +194,16 @@
           <t-button theme="danger" variant="outline" @click="handleDelete" v-if="hasExistingDiary" :disabled="saving">
             删除日记
           </t-button>
+        </t-space>
+        <t-space>
+          <t-button variant="outline" @click="handlePreviousDay" :disabled="!hasPreviousDay || saving">
+            <template #icon><t-icon name="chevron-left" /></template>
+            上一天
+          </t-button>
+          <t-button variant="outline" @click="handleNextDay" :disabled="!hasNextDay || saving">
+            下一天
+            <template #icon><t-icon name="chevron-right" /></template>
+          </t-button>
           <t-button theme="primary" @click="handleSave" :loading="saving">
             保存日记
           </t-button>
@@ -219,6 +229,7 @@ interface Props {
 interface Emits {
   (e: 'update:visible', value: boolean): void
   (e: 'saved', date: string, content: string): void
+  (e: 'dateChange', date: string): void
 }
 
 interface ImageFile {
@@ -268,6 +279,24 @@ const moodOptions = [
 const date = computed(() => {
   if (!props.weather || !props.weather.date) return ''
   return DateUtils.formatFullDate(props.weather.date)
+})
+
+// 获取全局天气数据列表用于导航
+const globalWeatherList = computed(() => {
+  return (window as any).__weatherList || []
+})
+
+// 检查是否有上一天/下一天
+const hasPreviousDay = computed(() => {
+  if (!props.weather?.date || !globalWeatherList.value.length) return false
+  const currentIndex = globalWeatherList.value.findIndex((w: WeatherData) => w.date === props.weather.date)
+  return currentIndex > 0
+})
+
+const hasNextDay = computed(() => {
+  if (!props.weather?.date || !globalWeatherList.value.length) return false
+  const currentIndex = globalWeatherList.value.findIndex((w: WeatherData) => w.date === props.weather.date)
+  return currentIndex >= 0 && currentIndex < globalWeatherList.value.length - 1
 })
 
 // 监听对话框打开，加载已有日记
@@ -558,6 +587,26 @@ async function handleDelete() {
   }
 }
 
+function handlePreviousDay() {
+  if (!hasPreviousDay.value) return
+  
+  const currentIndex = globalWeatherList.value.findIndex((w: WeatherData) => w.date === props.weather.date)
+  if (currentIndex > 0) {
+    const previousWeather = globalWeatherList.value[currentIndex - 1]
+    emit('dateChange', previousWeather.date)
+  }
+}
+
+function handleNextDay() {
+  if (!hasNextDay.value) return
+  
+  const currentIndex = globalWeatherList.value.findIndex((w: WeatherData) => w.date === props.weather.date)
+  if (currentIndex >= 0 && currentIndex < globalWeatherList.value.length - 1) {
+    const nextWeather = globalWeatherList.value[currentIndex + 1]
+    emit('dateChange', nextWeather.date)
+  }
+}
+
 function handleClose() {
   emit('update:visible', false)
 }
@@ -762,7 +811,8 @@ function handleVisibleChange(value: boolean) {
 
 .diary-actions {
   display: flex;
-  justify-content: flex-end;
+  justify-content: space-between;
+  align-items: center;
   padding-top: 24px;
   border-top: 1px solid #eee;
 }
