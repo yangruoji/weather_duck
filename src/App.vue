@@ -6,16 +6,15 @@
     <!-- PWA安装提示 -->
     <PWAInstall @app-installed="handleAppInstalled" />
     
-    <div class="app-header no-print">
-      <div class="header-left" @click="showAbout" title="关于天气小鸭">
-        <h1>
-          <img src="/weather_duck_logo.png" alt="天气小鸭" />
-          天气小鸭 · 暑假天气日历
-          <span v-if="headerProvince || headerCity" class="title-location">（{{ headerProvince }}<template v-if="headerProvince && headerCity"> · </template>{{ headerCity }}）</span>
-        </h1>
-      </div>
-     
-      <div class="header-right" :class="{ 'header-right--hidden': !isHeaderRightVisible }">
+    <AppHeader 
+      title="天气小鸭 · 暑假天气日历"
+      :location="headerProvince || headerCity ? `${headerCity}${headerProvince && headerCity ? ' · ' : ''}${headerProvince}` : ''"
+      :scroll-threshold="100"
+      @refresh="fetchAll"
+      @settings="showAbout"
+      class="no-print"
+    >
+      <template #header-actions>
         <div class="toolbar">
           <t-input
             class="control control--full"
@@ -52,8 +51,8 @@
           <t-button class="control" theme="primary" @click="fetchAll">获取天气</t-button>
           <t-button class="control" variant="outline" @click="printPage">打印</t-button>
         </div>
-      </div>
-    </div>
+      </template>
+    </AppHeader>
 
     <div class="app-content">
       <t-alert v-if="errorMessage" theme="error" :message="errorMessage" class="no-print" />
@@ -138,6 +137,7 @@ import WeatherDiaryView from './components/WeatherDiaryView.vue'
 import AboutDialog from './components/AboutDialog.vue'
 import OfflineIndicator from './components/OfflineIndicator.vue'
 import PWAInstall from './components/PWAInstall.vue'
+import AppHeader from './components/AppHeader.vue'
 import { WeatherApiService } from './services/weatherApi'
 import { OptimizedSupabaseDiaryService } from './services/optimizedSupabaseDiary'
 import type { WeatherData } from './types/weather'
@@ -172,11 +172,7 @@ const selectedWeather = ref<WeatherData | null>(null)
 // About对话框状态
 const aboutVisible = ref(false)
 
-// 滚动隐藏header_right相关状态
-const isHeaderRightVisible = ref(true)
-let scrollTimer: number | null = null
-let lastScrollDirection = 0 // 1向下，-1向上，0初始
-// let lastScrollY = 0
+
 
 // 计算标题中显示的城市和省份
 const headerParts = computed(() => {
@@ -455,41 +451,7 @@ function handleAppInstalled() {
   // 可以在这里显示安装成功提示或进行其他操作
 }
 
-// 滚动处理函数 - 防抖+方向锁定，彻底避免抖动
-function handleScroll() {
-  // const currentScrollY = window.scrollY
-  
-  // 清除之前的定时器
-  if (scrollTimer) {
-    clearTimeout(scrollTimer)
-  }
-  
-  // 计算滚动方向 (暂时注释掉未使用的变量)
-  // const scrollDirection = currentScrollY > lastScrollY ? 1 : -1
-  
-  // 防抖处理，100ms后执行
-  scrollTimer = window.setTimeout(() => {
-    const finalScrollY = window.scrollY
-    
-    // 只有在明确的滚动方向且超过阈值时才改变状态
-    if (finalScrollY > 150) {
-      // 向下滚动超过150px，隐藏
-      if (lastScrollDirection !== 1) {
-        isHeaderRightVisible.value = false
-        lastScrollDirection = 1
-      }
-    } else if (finalScrollY < 50) {
-      // 向上滚动到50px以内，显示
-      if (lastScrollDirection !== -1) {
-        isHeaderRightVisible.value = true
-        lastScrollDirection = -1
-      }
-    }
-    // 在50-150px之间保持当前状态不变
-  }, 100)
-  
-  // lastScrollY = currentScrollY
-}
+
 
 onMounted(async () => {
   // 初始化Supabase
@@ -519,71 +481,18 @@ onMounted(async () => {
     setSelectedToCurrentLocation(displayAddress.value)
   }
   
-  // 添加滚动监听
-  window.addEventListener('scroll', handleScroll, { passive: true })
+
   
   await fetchAll()
 })
 
 onUnmounted(() => {
-  // 移除滚动监听和清理定时器
-  window.removeEventListener('scroll', handleScroll)
-  if (scrollTimer) {
-    clearTimeout(scrollTimer)
-  }
+  // 清理工作已移至AppHeader组件
 })
 </script>
 
 <style scoped>
-.app-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 8px 16px;
-  background: #fff;
-  border-bottom: 1px solid #eee;
-  position: sticky;
-  top: 0;
-  z-index: 100;
-  overflow: hidden;
-}
-.header-left {
-  cursor: pointer;
-  transition: opacity 0.2s ease;
 
-  img {
-    width: 48px;
-    height: 48px;
-    vertical-align: middle;
-  }
-}
-
-.header-left:hover {
-  opacity: 0.8;
-  color: #0052d9;
-}
-
-.header-left h1 {
-  font-size: 18px;
-  margin: 0;
-}
-.header-right {
-  display: block;
-  overflow: hidden;
-  transition: none !important;
-}
-.header-right--hidden {
-  display: none !important;
-  visibility: hidden !important;
-  opacity: 0 !important;
-  transition: none !important;
-}
-.title-location {
-  font-size: 14px;
-  color: #666;
-  margin-left: 8px;
-  font-weight: 400;
-}
 .cards-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
