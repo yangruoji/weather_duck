@@ -60,8 +60,8 @@
 
       <!-- 操作按钮 -->
       <div class="diary-actions">
-        <t-space>
-          <t-button variant="outline" @click="handleClose">关闭</t-button>
+        <!-- 导航按钮行 -->
+        <div class="nav-buttons">
           <t-button variant="outline" @click="handlePreviousDay" :disabled="!hasPreviousDay">
             <template #icon><t-icon name="chevron-left" /></template>
             上一天
@@ -70,8 +70,15 @@
             下一天
             <template #icon><t-icon name="chevron-right" /></template>
           </t-button>
-          <t-button theme="primary" @click="handleEdit">编辑日记</t-button>
-        </t-space>
+        </div>
+        
+        <!-- 主要操作按钮行 -->
+        <div class="main-buttons">
+          <t-space>
+            <t-button variant="outline" @click="handleClose">关闭</t-button>
+            <t-button theme="primary" @click="handleEdit">编辑日记</t-button>
+          </t-space>
+        </div>
       </div>
     </div>
 
@@ -332,10 +339,53 @@ function handleVisibleChange(value: boolean) {
 }
 
 .diary-actions {
-  display: flex;
-  justify-content: flex-end;
   padding-top: 24px;
   border-top: 1px solid #eee;
+}
+
+.nav-buttons {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.main-buttons {
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* 桌面模式：所有按钮在一行 */
+@media (min-width: 769px) {
+  .diary-actions {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 12px;
+  }
+  
+  .nav-buttons {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 0;
+  }
+  
+  .main-buttons {
+    margin-left: auto;
+  }
+}
+
+/* 手机模式：导航按钮单独一行 */
+@media (max-width: 768px) {
+  .nav-buttons {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 16px;
+  }
+  
+  .main-buttons {
+    display: flex;
+    justify-content: flex-end;
+  }
 }
 
 .empty-state {
