@@ -97,7 +97,7 @@
     <t-image-viewer
       v-model:visible="imagePreviewVisible"
       :images="diaryData?.images || []"
-      :index="previewIndex"
+      v-model:index="previewIndex"
     />
   </t-dialog>
 </template>

@@ -3,6 +3,7 @@
     <div class="app-header no-print">
       <div class="header-left" @click="showAbout" title="关于天气小鸭">
         <h1>
+          <img src="/weather_duck_logo.png" alt="天气小鸭" />
           天气小鸭 · 暑假天气日历
           <span v-if="headerProvince || headerCity" class="title-location">（{{ headerProvince }}<template v-if="headerProvince && headerCity"> · </template>{{ headerCity }}）</span>
         </h1>
@@ -503,7 +504,7 @@ onUnmounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 12px 16px;
+  padding: 8px 16px;
   background: #fff;
   border-bottom: 1px solid #eee;
   position: sticky;
@@ -514,6 +515,12 @@ onUnmounted(() => {
 .header-left {
   cursor: pointer;
   transition: opacity 0.2s ease;
+
+  img {
+    width: 48px;
+    height: 48px;
+    vertical-align: middle;
+  }
 }
 
 .header-left:hover {
