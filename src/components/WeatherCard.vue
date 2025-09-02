@@ -82,6 +82,7 @@ import { WeatherData } from '../types/weather'
 import { DateUtils } from '../utils/dateUtils'
 // import { OptimizedSupabaseDiaryService } from '../services/optimizedSupabaseDiary'
 import type { WeatherDiary } from '../config/supabase'
+import { truncateText } from '../utils/textUtils'
 
 interface Props {
   weather: WeatherData
@@ -161,10 +162,7 @@ onUnmounted(() => {
 })
 
 function getDiaryPreview(content: string): string {
-  const text = content.trim()
-  if (!text) return ''
-  const head = text.slice(0, 10)
-  return head + (text.length > 10 ? '…' : '')
+  return truncateText(content, 10)
 }
 
 function getFirstImage(diary: WeatherDiary): string {

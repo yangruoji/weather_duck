@@ -261,8 +261,8 @@ function handleVisibleChange(value: boolean) {
 
 @media (max-width: 480px) {
   .duck-image {
-    width: 100px;
-    height: 100px;
+    /* width: 100px; */
+    /* height: 100px; */
   }
   
   .app-title {

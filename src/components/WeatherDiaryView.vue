@@ -73,6 +73,14 @@
       <div class="diary-actions">
         <t-space>
           <t-button variant="outline" @click="handleClose">关闭</t-button>
+          <t-button variant="outline" @click="handlePreviousDay" :disabled="!hasPreviousDay">
+            <template #icon><t-icon name="chevron-left" /></template>
+            上一天
+          </t-button>
+          <t-button variant="outline" @click="handleNextDay" :disabled="!hasNextDay">
+            下一天
+            <template #icon><t-icon name="chevron-right" /></template>
+          </t-button>
           <t-button theme="primary" @click="handleEdit">编辑日记</t-button>
         </t-space>
       </div>
@@ -109,6 +117,7 @@ interface Props {
 interface Emits {
   (e: 'update:visible', value: boolean): void
   (e: 'edit', weather: WeatherData): void
+  (e: 'dateChange', date: string): void
 }
 
 const props = defineProps<Props>()
@@ -123,12 +132,37 @@ const date = computed(() => {
   return DateUtils.formatFullDate(props.weather.date)
 })
 
+// 获取全局天气数据列表用于导航
+const globalWeatherList = computed(() => {
+  return (window as any).__weatherList || []
+})
+
+// 检查是否有上一天/下一天
+const hasPreviousDay = computed(() => {
+  if (!props.weather?.date || !globalWeatherList.value.length) return false
+  const currentIndex = globalWeatherList.value.findIndex((w: WeatherData) => w.date === props.weather.date)
+  return currentIndex > 0
+})
+
+const hasNextDay = computed(() => {
+  if (!props.weather?.date || !globalWeatherList.value.length) return false
+  const currentIndex = globalWeatherList.value.findIndex((w: WeatherData) => w.date === props.weather.date)
+  return currentIndex >= 0 && currentIndex < globalWeatherList.value.length - 1
+})
+
 // 监听对话框打开，加载日记
 watch(() => props.visible, async (newVisible) => {
   if (newVisible) {
     await loadDiary()
   }
 })
+
+// 监听天气数据变化，重新加载日记
+watch(() => props.weather, async (newWeather) => {
+  if (newWeather && props.visible) {
+    await loadDiary()
+  }
+}, { deep: true })
 
 // 从数据库加载日记
 async function loadDiary() {
@@ -168,6 +202,26 @@ function previewImage(_image: string, index: number) {
 function handleEdit() {
   emit('edit', props.weather)
   handleClose()
+}
+
+function handlePreviousDay() {
+  if (!hasPreviousDay.value) return
+  
+  const currentIndex = globalWeatherList.value.findIndex((w: WeatherData) => w.date === props.weather.date)
+  if (currentIndex > 0) {
+    const previousWeather = globalWeatherList.value[currentIndex - 1]
+    emit('dateChange', previousWeather.date)
+  }
+}
+
+function handleNextDay() {
+  if (!hasNextDay.value) return
+  
+  const currentIndex = globalWeatherList.value.findIndex((w: WeatherData) => w.date === props.weather.date)
+  if (currentIndex >= 0 && currentIndex < globalWeatherList.value.length - 1) {
+    const nextWeather = globalWeatherList.value[currentIndex + 1]
+    emit('dateChange', nextWeather.date)
+  }
 }
 
 function handleClose() {

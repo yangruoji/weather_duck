@@ -8,6 +8,7 @@ import * as echarts from 'echarts'
 import type { ECharts as TECharts, EChartsOption, LineSeriesOption, BarSeriesOption } from 'echarts'
 import type { WeatherData } from '../types/weather'
 import { StorageAdapter } from '../services/storageAdapter'
+import { truncateText } from '../utils/textUtils'
 
 interface Props {
   data: WeatherData[]
@@ -21,6 +22,8 @@ interface Emits {
 
 const props = defineProps<Props>()
 const emit = defineEmits<Emits>()
+
+
 
 const chartContainer = ref<HTMLDivElement | null>(null)
 let chart: TECharts | null = null
@@ -142,7 +145,7 @@ function getOption(list: WeatherData[]): EChartsOption {
           }
           
           if (diary.content) {
-            const preview = diary.content.length > 50 ? diary.content.substring(0, 50) + '...' : diary.content
+            const preview = truncateText(diary.content, 8)
             result += `<div style="margin: 2px 0; font-size: 14px; color: #006;">${preview}</div>`
           }
           
@@ -529,7 +532,7 @@ function getOption(list: WeatherData[]): EChartsOption {
               if (diary && diary.mood) {
                 let tooltipText = `${moodEmoji} ${diary.mood}`
                 if (diary.content) {
-                  const preview = diary.content.length > 30 ? diary.content.substring(0, 30) + '...' : diary.content
+                  const preview = truncateText(diary.content, 10)
                   tooltipText += `\n"${preview}"`
                 }
                 tooltipText += `\n💡 点击打开 ${weather.date} 天气日记`

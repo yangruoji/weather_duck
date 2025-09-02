@@ -103,6 +103,7 @@
       v-model:visible="diaryViewVisible"
       :weather="selectedWeather"
       @edit="handleEditDiary"
+      @date-change="handleDateChange"
     />
 
     <!-- 日记编辑对话框 -->
@@ -273,6 +274,9 @@ async function fetchAll() {
       )
     ])
     weatherList.value = weatherData
+    
+    // 更新全局天气数据
+    ;(window as any).__weatherList = weatherList.value
 
     // 批量预加载日记概览（异步，不阻塞UI）
     await preloadDiariesOverview(startDate.value, endDate.value)
@@ -315,8 +319,9 @@ function printPage() {
 // 日记缓存，避免重复请求
 const diaryCache = ref<Map<string, any>>(new Map())
 
-// 将缓存暴露给全局，供WeatherCard使用
+// 将缓存和天气数据暴露给全局，供WeatherCard和WeatherDiaryView使用
 ;(window as any).__diaryCache = diaryCache.value
+;(window as any).__weatherList = weatherList.value
 
 // 批量预加载日记概览
 async function preloadDiariesOverview(startDate: string, endDate: string) {
@@ -375,6 +380,15 @@ function handleEditDiary(weather: WeatherData) {
   selectedWeather.value = weather
   diaryViewVisible.value = false
   diaryEditVisible.value = true
+}
+
+// 处理日期变化（上一天/下一天）
+function handleDateChange(date: string) {
+  const weather = weatherList.value.find(w => w.date === date)
+  if (weather) {
+    selectedWeather.value = weather
+    // 保持当前对话框状态，只更新数据
+  }
 }
 
 // 处理日记保存
