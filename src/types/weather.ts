@@ -12,6 +12,7 @@ export interface WeatherData {
   cloudCover: number
   description: string
   icon: string
+  isPlaceholder?: boolean // 标记是否为占位数据
 }
 
 export interface DateRange {

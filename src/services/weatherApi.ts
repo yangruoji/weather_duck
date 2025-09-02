@@ -90,21 +90,23 @@ export class WeatherApiService {
           const windDirection = typeof windDirDeg === 'number' ? this.getWindDirection(windDirDeg) : '不详'
           const hasT = typeof tmax === 'number' && typeof tmin === 'number'
           
-          // 改进温度数据处理 - 避免显示0温度
+          // 改进温度数据处理 - 不跳过任何日期
           let minTemp = 0
           let maxTemp = 0
           let currentTemp = 0
+          let isPlaceholder = false
           
           if (hasT) {
             minTemp = Math.round(tmin as number)
             maxTemp = Math.round(tmax as number)
             currentTemp = Math.round(((tmin as number) + (tmax as number)) / 2)
           } else {
-            // 如果没有温度数据，尝试使用合理的默认值或跳过该日期
-            console.warn(`日期 ${date} 缺少温度数据，tmax: ${tmax}, tmin: ${tmin}`)
-            // 可以选择跳过这个日期，或者使用估算值
-            // 这里我们跳过没有温度数据的日期
-            continue
+            // 如果没有温度数据，使用0值
+            console.warn(`日期 ${date} 缺少温度数据`)
+            minTemp = 0
+            maxTemp = 0
+            currentTemp = 0
+            isPlaceholder = true
           }
 
           result.push({
@@ -119,8 +121,9 @@ export class WeatherApiService {
             windDirection,
             precipitation: Math.round((precip as number) * 100) / 100,
             cloudCover: Math.round(cloud as number),
-            description: info.description,
-            icon: info.icon
+            description: isPlaceholder ? '历史数据缺失' : info.description,
+            icon: isPlaceholder ? '❓' : info.icon,
+            isPlaceholder
           })
         }
 
@@ -256,7 +259,7 @@ export class WeatherApiService {
     }
   }
 
-  // 增强版获取天气数据 - 结合历史数据和最近数据
+  // 增强版获取天气数据 - 结合历史数据和最近数据，确保连续性
   static async getEnhancedWeatherData(
     latitude: number = 22.5429,
     longitude: number = 114.0596,
@@ -264,60 +267,131 @@ export class WeatherApiService {
     endDate: string
   ): Promise<WeatherData[]> {
     const today = new Date().toISOString().slice(0, 10)
-    // const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
+    const twoDaysAgo = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
     
     try {
-      // 如果请求的日期包含今天或未来日期，使用forecast API
-      if (endDate >= today) {
-        // 分别获取历史数据和最近数据
-        const promises: Promise<WeatherData[]>[] = []
-        
-        // 如果有历史日期，获取历史数据
-        if (startDate < today) {
-          const historyEndDate = new Date(Math.min(new Date(endDate).getTime(), new Date(today).getTime() - 24 * 60 * 60 * 1000)).toISOString().slice(0, 10)
-          if (startDate <= historyEndDate) {
-            promises.push(this.getHistoricalWeather(latitude, longitude, startDate, historyEndDate))
-          }
-        }
-        
-        // 获取最近几天的数据（包括今天）
-        const daysFromToday = Math.ceil((new Date(endDate).getTime() - new Date(today).getTime()) / (24 * 60 * 60 * 1000)) + 1
-        if (daysFromToday > 0) {
-          promises.push(this.getRecentWeather(latitude, longitude, Math.min(daysFromToday, 16))) // API限制最多16天
-        }
-        
-        const results = await Promise.allSettled(promises)
-        const allData: WeatherData[] = []
-        
-        results.forEach((result, index) => {
-          if (result.status === 'fulfilled') {
-            allData.push(...result.value)
-          } else {
-            console.warn(`获取天气数据失败 (${index}):`, result.reason)
-          }
-        })
-        
-        // 去重并排序
-        const uniqueData = allData.reduce((acc, item) => {
-          if (!acc.find(existing => existing.date === item.date)) {
-            acc.push(item)
-          }
-          return acc
-        }, [] as WeatherData[])
-        
-        return uniqueData
-          .filter(item => item.date >= startDate && item.date <= endDate)
-          .sort((a, b) => a.date.localeCompare(b.date))
-      } else {
-        // 全部是历史数据，使用原来的方法
-        return this.getHistoricalWeather(latitude, longitude, startDate, endDate)
+      const allData: WeatherData[] = []
+      const promises: Promise<WeatherData[]>[] = []
+      
+      // 1. 获取历史数据（到前天为止）
+      if (startDate <= twoDaysAgo) {
+        const historyEndDate = endDate <= twoDaysAgo ? endDate : twoDaysAgo
+        promises.push(
+          this.getHistoricalWeather(latitude, longitude, startDate, historyEndDate)
+            .catch(error => {
+              console.warn('历史数据获取失败，将使用占位数据:', error)
+              return []
+            })
+        )
       }
+      
+      // 2. 获取最近数据（昨天、今天及未来）
+      const recentStartDate = startDate > twoDaysAgo ? startDate : new Date(new Date(twoDaysAgo).getTime() + 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
+      if (recentStartDate <= endDate) {
+        const daysFromYesterday = Math.ceil((new Date(endDate).getTime() - new Date(recentStartDate).getTime()) / (24 * 60 * 60 * 1000)) + 1
+        promises.push(
+          this.getRecentWeather(latitude, longitude, Math.min(daysFromYesterday + 1, 16))
+            .then(data => data.filter(item => item.date >= recentStartDate && item.date <= endDate))
+            .catch(error => {
+              console.warn('最近数据获取失败，将使用占位数据:', error)
+              return []
+            })
+        )
+      }
+      
+      // 3. 等待所有请求完成
+      const results = await Promise.allSettled(promises)
+      results.forEach((result) => {
+        if (result.status === 'fulfilled') {
+          allData.push(...result.value)
+        }
+      })
+      
+      // 4. 去重并排序
+      const uniqueData = allData.reduce((acc, item) => {
+        if (!acc.find(existing => existing.date === item.date)) {
+          acc.push(item)
+        }
+        return acc
+      }, [] as WeatherData[])
+      
+      // 5. 生成完整的日期范围，填补缺失数据
+      const completeData = this.generateCompleteDateRange(startDate, endDate, uniqueData)
+      
+      return completeData.sort((a, b) => a.date.localeCompare(b.date))
+      
     } catch (error) {
       console.error('获取增强天气数据失败:', error)
-      // 降级到原来的方法
-      return this.getHistoricalWeather(latitude, longitude, startDate, endDate)
+      // 即使失败也要返回完整的日期范围
+      return this.generateCompleteDateRange(startDate, endDate, [])
     }
   }
+
+  // 生成完整的日期范围，填补缺失的天气数据
+  private static generateCompleteDateRange(
+    startDate: string,
+    endDate: string,
+    existingData: WeatherData[]
+  ): WeatherData[] {
+    const result: WeatherData[] = []
+    const start = new Date(startDate)
+    const end = new Date(endDate)
+    const today = new Date().toISOString().slice(0, 10)
+    
+    // 创建现有数据的映射
+    const dataMap = new Map<string, WeatherData>()
+    existingData.forEach(item => {
+      dataMap.set(item.date, item)
+    })
+    
+    // 遍历日期范围
+    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+      const dateStr = d.toISOString().slice(0, 10)
+      
+      if (dataMap.has(dateStr)) {
+        // 使用现有数据
+        result.push(dataMap.get(dateStr)!)
+      } else {
+        // 生成占位数据
+        const placeholderData = this.generatePlaceholderWeatherData(dateStr, today)
+        result.push(placeholderData)
+      }
+    }
+    
+    return result
+  }
+
+  // 生成占位天气数据
+  private static generatePlaceholderWeatherData(date: string, today: string): WeatherData {
+    const isPast = date < today
+    const isToday = date === today
+    const isFuture = date > today
+    
+    // 根据日期类型生成不同的描述
+    let description = '数据缺失'
+    if (isPast) {
+      description = '历史数据缺失'
+    } else if (isToday) {
+      description = '实时数据缺失'
+    } else if (isFuture) {
+      description = '预报数据缺失'
+    }
+    
+    return {
+      date,
+      temperature: { min: 0, max: 0, current: 0 }, // 不给默认值，保持0
+      humidity: 0, // 不给默认值
+      windSpeed: 0,
+      windDirection: '未知',
+      precipitation: 0,
+      cloudCover: 0,
+      description,
+      icon: '❓', // 统一使用❓图标
+      isPlaceholder: true // 标记为占位数据
+    }
+  }
+
+
 
   // 根据角度计算风向
   private static getWindDirection(angle: number): string {
