@@ -316,8 +316,7 @@ watch(() => props.visible, async (newVisible, oldVisible) => {
 watch(() => props.weather, async (newWeather, oldWeather) => {
   // 如果对话框已经打开且 weather 数据发生变化，重新加载
   if (props.visible && newWeather?.date && newWeather.date !== oldWeather?.date) {
-    console.log('🔄 Weather 数据变化，重新加载日记')
-    console.log('🔄 新日期:', newWeather.date, '旧日期:', oldWeather?.date)
+
     // 强制重新加载日记数据
     await loadDiary()
   }
@@ -326,8 +325,7 @@ watch(() => props.weather, async (newWeather, oldWeather) => {
 // 专门监听日期变化的 watcher
 watch(() => props.weather?.date, async (newDate, oldDate) => {
   if (props.visible && newDate && newDate !== oldDate) {
-    console.log('🔄 日期直接变化，重新加载日记')
-    console.log('🔄 新日期:', newDate, '旧日期:', oldDate)
+
     await loadDiary()
   }
 })
@@ -346,25 +344,23 @@ function resetForm() {
 
 // 从数据库加载日记
 async function loadDiary() {
-  console.log('🔍 WeatherDiaryEdit loadDiary 被调用')
-  console.log('🔍 props.weather:', props.weather)
-  console.log('🔍 props.weather?.date:', props.weather?.date)
+
   
   if (!props.weather || !props.weather.date) {
-    console.log('❌ 没有天气数据或日期，重置表单')
+
     resetForm()
     return
   }
   
   try {
-    console.log('🚀 开始调用 OptimizedSupabaseDiaryService.getDiary，日期:', props.weather.date)
+
     
     const diary = await OptimizedSupabaseDiaryService.getDiary(props.weather.date)
     
-    console.log('📦 服务返回的日记数据:', diary)
+
     
     if (diary) {
-      console.log('✅ 找到日记，设置表单内容')
+
       hasExistingDiary.value = true
       cityLocation.value = diary.city || ''
       selectedMood.value = diary.mood || ''
@@ -392,11 +388,11 @@ async function loadDiary() {
         }))
       }
     } else {
-      console.log('📝 没有找到日记，重置表单')
+
       resetForm()
     }
   } catch (e) {
-    console.error('💥 加载日记失败:', e)
+
     resetForm()
   }
 }
@@ -411,7 +407,7 @@ function handleImageSelect(event: Event) {
     const file = files[i]
     if (!file.type.startsWith('image/')) continue
     if (file.size > 5 * 1024 * 1024) {
-      console.error(`图片 ${file.name} 大小超过5MB`)
+
       continue
     }
 
@@ -441,7 +437,7 @@ function handleVideoSelect(event: Event) {
     const file = files[i]
     if (!file.type.startsWith('video/')) continue
     if (file.size > 50 * 1024 * 1024) {
-      console.error(`视频 ${file.name} 大小超过50MB`)
+
       continue
     }
 
@@ -522,7 +518,7 @@ async function handleSave() {
           completedTasks++
           totalProgress.value = (completedTasks / totalTasks) * 100
         } catch (error) {
-          console.error('图片上传失败:', error)
+
           image.uploading = false
         }
       }
@@ -562,7 +558,7 @@ async function handleSave() {
           completedTasks++
           totalProgress.value = (completedTasks / totalTasks) * 100
         } catch (error) {
-          console.error('视频上传失败:', error)
+
           video.uploading = false
         }
       }
@@ -597,7 +593,7 @@ async function handleSave() {
     }, 500)
     
   } catch (e) {
-    console.error('保存日记失败:', e)
+
     saveProgressText.value = '保存失败，请重试'
   } finally {
     saving.value = false
@@ -633,7 +629,7 @@ async function handleDelete() {
         handleClose()
         confirmDialog.destroy()
       } catch (e) {
-        console.error('删除日记失败:', e)
+
         confirmDialog.destroy()
       }
     },
