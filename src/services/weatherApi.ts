@@ -266,7 +266,6 @@ export class WeatherApiService {
     startDate: string,
     endDate: string
   ): Promise<WeatherData[]> {
-    const today = new Date().toISOString().slice(0, 10)
     const twoDaysAgo = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
     
     try {

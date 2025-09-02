@@ -592,7 +592,7 @@ async function handleDiaryUpdate(_event: any) {
 }
 
 // 显示自定义tooltip
-function showCustomTooltip(event: any, text: string, type: 'weather' | 'mood') {
+function showCustomTooltip(event: any, text: string, _type: 'weather' | 'mood') {
   if (!chartContainer.value) return
   
   // 创建tooltip元素

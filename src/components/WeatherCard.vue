@@ -162,7 +162,7 @@ onUnmounted(() => {
 })
 
 function getDiaryPreview(content: string): string {
-  return truncateText(content, 10)
+  return truncateText(content, 12)
 }
 
 function getFirstImage(diary: WeatherDiary): string {

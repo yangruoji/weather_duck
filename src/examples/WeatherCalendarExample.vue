@@ -23,6 +23,7 @@
     
     <!-- 天气日记对话框 -->
     <WeatherDiary
+      v-if="selectedWeather"
       :visible="diaryVisible"
       :weather="selectedWeather"
       @update:visible="diaryVisible = $event"
@@ -157,7 +158,7 @@ function openDiary(weather: WeatherData) {
 }
 
 // 日记保存回调
-function onDiarySaved(date: string, content: string) {
+function onDiarySaved(date: string, _content: string) {
   console.log(`📝 日记已保存: ${date}`)
   // 可以在这里更新UI或触发其他操作
 }

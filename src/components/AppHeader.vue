@@ -44,7 +44,7 @@ const props = withDefaults(defineProps<Props>(), {
   scrollThreshold: 100
 })
 
-const emit = defineEmits<{
+defineEmits<{
   refresh: []
   settings: []
 }>()
