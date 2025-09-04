@@ -598,7 +598,6 @@ async function handleSave() {
     if (globalManager) {
       try {
         await globalManager.refreshDate(props.weather.date)
-        console.log('✅ 全局缓存已刷新')
       } catch (error) {
         console.warn('刷新全局缓存失败:', error)
       }
@@ -650,7 +649,6 @@ async function handleDelete() {
         if (globalManager) {
           try {
             await globalManager.refreshDate(props.weather.date)
-            console.log('✅ 全局缓存已刷新（删除）')
           } catch (error) {
             console.warn('刷新全局缓存失败:', error)
           }

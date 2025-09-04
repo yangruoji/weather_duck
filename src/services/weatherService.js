@@ -12,12 +12,12 @@ class WeatherService {
     const key = cacheService.generateKey('current_weather', { latitude, longitude })
     
     if (!forceRefresh && cacheService.has(key)) {
-      console.log('使用缓存的当前天气数据')
+
       return cacheService.get(key)
     }
 
     try {
-      console.log('请求新的当前天气数据')
+
       const data = await WeatherApiService.getCurrentWeather(latitude, longitude)
       if (data) {
         cacheService.set(key, data, this.defaultTTL)
@@ -28,7 +28,7 @@ class WeatherService {
       // 如果有缓存数据，即使过期也返回
       const cachedData = cacheService.get(key)
       if (cachedData) {
-        console.log('使用过期的缓存数据')
+
         return cachedData
       }
       throw error
@@ -39,12 +39,12 @@ class WeatherService {
     const key = cacheService.generateKey('forecast', { latitude, longitude, days })
     
     if (!forceRefresh && cacheService.has(key)) {
-      console.log('使用缓存的预报数据')
+
       return cacheService.get(key)
     }
 
     try {
-      console.log('请求新的预报数据')
+
       const data = await WeatherApiService.getRecentWeather(latitude, longitude, days)
       if (data) {
         cacheService.set(key, data, this.forecastTTL)
@@ -54,7 +54,7 @@ class WeatherService {
       console.error('获取预报数据失败:', error)
       const cachedData = cacheService.get(key)
       if (cachedData) {
-        console.log('使用过期的预报缓存数据')
+
         return cachedData
       }
       throw error
@@ -65,12 +65,12 @@ class WeatherService {
     const key = cacheService.generateKey('historical', { latitude, longitude, startDate, endDate })
     
     if (!forceRefresh && cacheService.has(key)) {
-      console.log('使用缓存的历史天气数据')
+
       return cacheService.get(key)
     }
 
     try {
-      console.log('请求新的历史天气数据')
+
       const data = await WeatherApiService.getHistoricalWeather(latitude, longitude, startDate, endDate)
       if (data) {
         cacheService.set(key, data, this.forecastTTL) // 历史数据缓存时间长一些
@@ -80,7 +80,7 @@ class WeatherService {
       console.error('获取历史天气失败:', error)
       const cachedData = cacheService.get(key)
       if (cachedData) {
-        console.log('使用过期的历史天气缓存数据')
+
         return cachedData
       }
       throw error
@@ -91,12 +91,12 @@ class WeatherService {
     const key = cacheService.generateKey('date_range', { latitude, longitude, startDate, endDate })
     
     if (!forceRefresh && cacheService.has(key)) {
-      console.log('使用缓存的日期范围天气数据')
+
       return cacheService.get(key)
     }
 
     try {
-      console.log('请求新的日期范围天气数据')
+
       const data = await WeatherApiService.getEnhancedWeatherData(latitude, longitude, startDate, endDate)
       if (data) {
         cacheService.set(key, data, this.forecastTTL)
@@ -106,7 +106,7 @@ class WeatherService {
       console.error('获取日期范围天气失败:', error)
       const cachedData = cacheService.get(key)
       if (cachedData) {
-        console.log('使用过期的日期范围缓存数据')
+
         return cachedData
       }
       throw error
@@ -118,7 +118,7 @@ class WeatherService {
     cacheService.invalidateByType('forecast')
     cacheService.invalidateByType('historical')
     cacheService.invalidateByType('date_range')
-    console.log('天气缓存已清空')
+
   }
 
   async refreshWeatherData(type, ...args) {

@@ -15,12 +15,9 @@ class GlobalDataManager {
         this.currentDateRange && 
         this.currentDateRange.startDate === startDate && 
         this.currentDateRange.endDate === endDate) {
-      console.log('数据已初始化，跳过重复加载')
       return
     }
 
-    console.log('🚀 全局数据管理器：开始初始化数据')
-    
     try {
       // 并行加载天气和日记数据
       const [weatherData, diariesData] = await Promise.all([
@@ -47,11 +44,6 @@ class GlobalDataManager {
       window.__diaryCache = diariesMap
       window.__weatherList = weatherData
 
-      console.log('✅ 全局数据管理器：数据初始化完成', {
-        weatherCount: weatherData.length,
-        diaryCount: diariesData.length
-      })
-
       // 通知所有组件数据已准备就绪
       window.dispatchEvent(new CustomEvent('global:data:ready', {
         detail: { weatherData, diariesData }
@@ -77,7 +69,6 @@ class GlobalDataManager {
   // 刷新特定日期的数据
   async refreshDate(date) {
     try {
-      console.log(`🔄 刷新日期数据: ${date}`)
       const diary = await diaryService.getDiaryByDate(date, true) // 强制刷新
       
       const diariesMap = this.dataCache.get('diaries')
@@ -102,7 +93,7 @@ class GlobalDataManager {
     this.dataCache.clear()
     this.isInitialized = false
     this.currentDateRange = null
-    console.log('🧹 全局数据缓存已清理')
+
   }
 }
 

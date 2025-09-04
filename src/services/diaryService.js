@@ -11,12 +11,11 @@ class DiaryService {
     const key = cacheService.generateKey('diaries', { limit })
     
     if (!forceRefresh && cacheService.has(key)) {
-      console.log('使用缓存的日记列表')
+
       return cacheService.get(key)
     }
 
     try {
-      console.log('请求新的日记列表')
       const { data, error } = await supabase
         .from('weather_diaries')
         .select('id,date,content,mood,city,weather_data,images,video,created_at,updated_at')
@@ -39,7 +38,6 @@ class DiaryService {
       console.error('获取日记列表失败:', error)
       const cachedData = cacheService.get(key)
       if (cachedData) {
-        console.log('使用过期的日记列表缓存')
         return cachedData
       }
       throw error
@@ -50,12 +48,10 @@ class DiaryService {
     const key = cacheService.generateKey('diaries_range', { startDate, endDate })
     
     if (!forceRefresh && cacheService.has(key)) {
-      console.log('使用缓存的日期范围日记')
       return cacheService.get(key)
     }
 
     try {
-      console.log('请求新的日期范围日记')
       const { data, error } = await supabase
         .from('weather_diaries')
         .select('*')
@@ -79,7 +75,6 @@ class DiaryService {
       console.error('获取日期范围日记失败:', error)
       const cachedData = cacheService.get(key)
       if (cachedData) {
-        console.log('使用过期的日期范围日记缓存')
         return cachedData
       }
       throw error
@@ -90,12 +85,10 @@ class DiaryService {
     const key = cacheService.generateKey('diary_by_date', { date })
     
     if (!forceRefresh && cacheService.has(key)) {
-      console.log(`使用缓存的日记数据: ${date}`)
       return cacheService.get(key)
     }
 
     try {
-      console.log(`请求新的日记数据: ${date}`)
       const { data, error } = await supabase
         .from('weather_diaries')
         .select('id,date,content,mood,city,weather_data,images,video,created_at,updated_at')
@@ -113,7 +106,6 @@ class DiaryService {
       console.error(`获取日记失败 (${date}):`, error)
       const cachedData = cacheService.get(key)
       if (cachedData) {
-        console.log(`使用过期的日记缓存: ${date}`)
         return cachedData
       }
       return null // 对于日记，如果获取失败就返回null
@@ -128,7 +120,6 @@ class DiaryService {
       let data
       if (existingDiary) {
         // 如果存在，则更新
-        console.log(`日记已存在，更新日期: ${diaryData.date}`)
         const { data: updateData, error } = await supabase
           .from('weather_diaries')
           .update(diaryData)
@@ -140,7 +131,6 @@ class DiaryService {
         data = updateData
       } else {
         // 如果不存在，则创建
-        console.log(`创建新日记，日期: ${diaryData.date}`)
         const { data: insertData, error } = await supabase
           .from('weather_diaries')
           .insert([diaryData])
@@ -212,7 +202,7 @@ class DiaryService {
     cacheService.invalidateByType('diary_by_date')
     cacheService.invalidateByType('diaries')
     cacheService.invalidateByType('diaries_range')
-    console.log('日记缓存已清空')
+
   }
 
   async refreshDiaryByDate(date) {
@@ -228,9 +218,7 @@ class DiaryService {
     Promise.all([
       this.getDiaryByDate(prevDate).catch(() => null),
       this.getDiaryByDate(nextDate).catch(() => null)
-    ]).then(() => {
-      console.log(`预加载相邻日记完成: ${prevDate}, ${nextDate}`)
-    })
+    ])
   }
 }
 

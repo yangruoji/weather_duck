@@ -50,12 +50,7 @@ async function loadDiaryMoods() {
     diaryMoods.value = moodMap
     diaryData.value = dataMap
     
-    // 调试信息：显示当前加载的心情数据
-    // const currentDates = props.data?.map(d => d.date) || []
-    // const moodsForCurrentDates = currentDates.filter(date => moodMap[date])
-    // console.log('图表日期范围:', currentDates)
-    // console.log('有心情数据的日期:', moodsForCurrentDates)
-    // console.log('心情数据映射:', Object.keys(moodMap).length, '条记录')
+
   } catch (error) {
     console.error('加载日记数据失败:', error)
   }
@@ -485,17 +480,13 @@ function getOption(list: WeatherData[]): EChartsOption {
       ...sortedList.map((weather, index) => {
         const mood = diaryMoods.value[weather.date]
         if (!mood) {
-          // console.log(`日期 ${weather.date} 没有心情数据`)
           return null
         }
         
         const moodEmoji = getMoodEmoji(mood)
         if (!moodEmoji) {
-          // console.log(`心情 "${mood}" 没有对应的emoji`)
           return null
         }
-        
-        // console.log(`为日期 ${weather.date} 生成心情图标: ${moodEmoji} (${mood})`)
         
         // 使用与天气图标相同的位置计算逻辑
         const totalPoints = sortedList.length
@@ -585,7 +576,6 @@ function handleResize() {
 
 // 处理日记更新事件
 async function handleDiaryUpdate(_event: any) {
-  // console.log('图表接收到日记更新事件:', event.detail)
   // 重新加载日记数据并更新图表
   await loadDiaryMoods()
   if (chart) {
@@ -740,7 +730,6 @@ onBeforeUnmount(() => {
 watch(
   () => [props.data, props.showCurrent, props.height],
   async () => {
-    // console.log('图表数据变化，重新渲染:', props.data?.length, '个数据点')
     await renderChart()
   },
   { deep: true, immediate: false }
@@ -751,7 +740,6 @@ watch(
   () => props.data,
   async (newData, oldData) => {
     if (newData && oldData && newData.length !== oldData.length) {
-      // console.log('数据点数量变化:', oldData.length, '->', newData.length)
       // 数据点数量变化时，强制重新渲染
       await renderChart()
     } else if (newData && oldData) {
@@ -762,7 +750,6 @@ watch(
                           newDates.some((date, index) => date !== oldDates[index])
       
       if (datesChanged) {
-        // console.log('日期范围变化，重新渲染图表')
         await renderChart()
       }
     }

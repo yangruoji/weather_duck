@@ -64,6 +64,10 @@
             :weather="item" 
             @click="handleWeatherCardClick"
           />
+          <LoadMoreCard 
+            :loading="loadingMore"
+            @load-more="handleLoadMore"
+          />
         </div>
       </t-loading>
     </div>
@@ -138,6 +142,7 @@ import AboutDialog from './components/AboutDialog.vue'
 import OfflineIndicator from './components/OfflineIndicator.vue'
 import PWAInstall from './components/PWAInstall.vue'
 import AppHeader from './components/AppHeader.vue'
+import LoadMoreCard from './components/LoadMoreCard.vue'
 import { WeatherApiService } from './services/weatherApi'
 
 import { weatherService } from './services/weatherService.js'
@@ -149,6 +154,7 @@ import { initializeSupabase } from './utils/initSupabase'
 
 const loading = ref(false)
 const locating = ref(false)
+const loadingMore = ref(false)
 const errorMessage = ref('')
 
 const latitude = ref(22.5429)
@@ -449,9 +455,49 @@ function showAbout() {
   aboutVisible.value = true
 }
 
+// 处理加载更多天气数据
+async function handleLoadMore() {
+  if (loadingMore.value) return
+  
+  loadingMore.value = true
+  try {
+    // 计算新的开始日期（当前endDate往前7天）
+    const currentEndDate = new Date(endDate.value)
+    const newEndDate = new Date(currentEndDate)
+    newEndDate.setDate(currentEndDate.getDate() - 1) // 新的结束日期是当前结束日期的前一天
+    
+    const newStartDate = new Date(newEndDate)
+    newStartDate.setDate(newEndDate.getDate() - 6) // 往前7天
+    
+    const newStartDateStr = DateUtils.formatDate(newStartDate)
+    const newEndDateStr = DateUtils.formatDate(newEndDate)
+    
+    // 获取新的天气数据
+    const newWeatherData = await weatherService.getWeatherByDateRange(
+      latitude.value,
+      longitude.value,
+      newStartDateStr,
+      newEndDateStr
+    )
+    
+    if (newWeatherData && newWeatherData.length > 0) {
+      // 将新数据添加到现有数据中，并按日期倒序排列
+      const allWeatherData = [...weatherList.value, ...newWeatherData]
+      weatherList.value = allWeatherData.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+      
+      // 更新日期范围
+      startDate.value = newStartDateStr
+      dateRangeValue.value = [startDate.value, endDate.value]
+    }
+  } catch (error) {
+    errorMessage.value = '加载更多数据失败，请稍后重试'
+  } finally {
+    loadingMore.value = false
+  }
+}
+
 // PWA事件处理
 function handleOnline() {
-  console.log('网络已连接')
   // 可以在这里重新获取数据或显示提示
 }
 
