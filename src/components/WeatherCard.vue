@@ -80,7 +80,7 @@
 import { computed, ref, onMounted, onUnmounted } from 'vue'
 import { WeatherData } from '../types/weather'
 import { DateUtils } from '../utils/dateUtils'
-// import { OptimizedSupabaseDiaryService } from '../services/optimizedSupabaseDiary'
+import { diaryService } from '../services/diaryService.js'
 import type { WeatherDiary } from '../config/supabase'
 import { truncateText } from '../utils/textUtils'
 
@@ -107,23 +107,39 @@ const hasDiary = ref(false)
 const diaryData = ref<WeatherDiary | null>(null)
 
 async function loadDiary() {
-  // 优先从全局缓存获取数据，避免单独API请求
-  const globalCache = (window as any).__diaryCache
-  if (globalCache && globalCache.has(props.weather.date)) {
-    const diary = globalCache.get(props.weather.date)
-    if (diary) {
-      hasDiary.value = true
-      diaryData.value = diary
-    } else {
-      hasDiary.value = false
-      diaryData.value = null
+  try {
+    // 优先从全局数据管理器获取数据
+    const globalManager = (window as any).__globalDataManager
+    if (globalManager) {
+      const diary = globalManager.getDiary(props.weather.date)
+      if (diary) {
+        hasDiary.value = true
+        diaryData.value = diary
+        return
+      }
     }
-    return
-  }
 
-  // 如果缓存中没有，则不发送请求，等待批量加载完成
-  hasDiary.value = false
-  diaryData.value = null
+    // 备用：从全局缓存获取
+    const globalCache = (window as any).__diaryCache
+    if (globalCache && globalCache.has(props.weather.date)) {
+      const diary = globalCache.get(props.weather.date)
+      if (diary) {
+        hasDiary.value = true
+        diaryData.value = diary
+        return
+      }
+    }
+
+    // 最后才发起请求（理论上不应该到这里）
+    console.warn(`WeatherCard: 缓存未命中，发起请求 ${props.weather.date}`)
+    const diary = await diaryService.getDiaryByDate(props.weather.date)
+    hasDiary.value = !!diary
+    diaryData.value = diary
+  } catch (error) {
+    console.warn(`获取日记失败 (${props.weather.date}):`, error)
+    hasDiary.value = false
+    diaryData.value = null
+  }
 }
 
 function onDiaryEvent(ev: Event) {
@@ -162,7 +178,7 @@ onUnmounted(() => {
 })
 
 function getDiaryPreview(content: string): string {
-  return truncateText(content, 12)
+  return truncateText(content, 10)
 }
 
 function getFirstImage(diary: WeatherDiary): string {

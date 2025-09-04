@@ -1,5 +1,5 @@
 import { isSupabaseEnabled } from '../config/supabase'
-import { OptimizedSupabaseDiaryService } from './optimizedSupabaseDiary'
+import { diaryService } from './diaryService.js'
 import { WeatherDiary } from '../config/supabase'
 
 /**
@@ -13,7 +13,7 @@ export class OptimizedStorageAdapter {
    */
   static async getDiary(date: string): Promise<WeatherDiary | null> {
     if (isSupabaseEnabled) {
-      return await OptimizedSupabaseDiaryService.getDiary(date)
+      return await diaryService.getDiaryByDate(date)
     } else {
       // 本地存储fallback
       const stored = localStorage.getItem(`diary_${date}`)
@@ -27,7 +27,14 @@ export class OptimizedStorageAdapter {
    */
   static async getDiariesByDates(dates: string[]): Promise<Record<string, WeatherDiary>> {
     if (isSupabaseEnabled) {
-      return await OptimizedSupabaseDiaryService.getDiariesByDates(dates)
+      const diaries = await diaryService.getDiariesByDateRange(dates[0], dates[dates.length - 1])
+      const diariesMap: Record<string, WeatherDiary> = {}
+      diaries.forEach(diary => {
+        if (diary.date && dates.includes(diary.date)) {
+          diariesMap[diary.date] = diary
+        }
+      })
+      return diariesMap
     } else {
       // 本地存储fallback
       const diariesMap: Record<string, WeatherDiary> = {}
@@ -46,7 +53,16 @@ export class OptimizedStorageAdapter {
    */
   static async getMonthDiaries(year: number, month: number): Promise<Record<string, WeatherDiary>> {
     if (isSupabaseEnabled) {
-      return await OptimizedSupabaseDiaryService.getMonthDiaries(year, month)
+      const startDate = `${year}-${month.toString().padStart(2, '0')}-01`
+      const endDate = `${year}-${month.toString().padStart(2, '0')}-31`
+      const diaries = await diaryService.getDiariesByDateRange(startDate, endDate)
+      const diariesMap: Record<string, WeatherDiary> = {}
+      diaries.forEach(diary => {
+        if (diary.date) {
+          diariesMap[diary.date] = diary
+        }
+      })
+      return diariesMap
     } else {
       // 本地存储fallback - 扫描整个月
       const diariesMap: Record<string, WeatherDiary> = {}
@@ -71,7 +87,7 @@ export class OptimizedStorageAdapter {
     diary: Omit<WeatherDiary, 'id' | 'created_at' | 'updated_at'>
   ): Promise<WeatherDiary> {
     if (isSupabaseEnabled) {
-      return await OptimizedSupabaseDiaryService.saveDiary(diary)
+      return await diaryService.createDiary(diary)
     } else {
       // 本地存储fallback
       const diaryData: WeatherDiary = {
@@ -91,7 +107,7 @@ export class OptimizedStorageAdapter {
    */
   static async deleteDiary(date: string): Promise<boolean> {
     if (isSupabaseEnabled) {
-      return await OptimizedSupabaseDiaryService.deleteDiary(date)
+      return await diaryService.deleteDiary(date)
     } else {
       localStorage.removeItem(`diary_${date}`)
       return true
@@ -103,7 +119,12 @@ export class OptimizedStorageAdapter {
    */
   static async searchDiaries(keyword: string, limit: number = 20): Promise<WeatherDiary[]> {
     if (isSupabaseEnabled) {
-      return await OptimizedSupabaseDiaryService.searchDiaries(keyword, limit)
+      const allDiaries = await diaryService.getDiaries(1000)
+      return allDiaries.filter(diary => 
+        diary.content?.includes(keyword) || 
+        diary.city?.includes(keyword) || 
+        diary.mood?.includes(keyword)
+      ).slice(0, limit)
     } else {
       // 本地存储搜索
       const results: WeatherDiary[] = []
@@ -131,7 +152,28 @@ export class OptimizedStorageAdapter {
    */
   static async getStatistics() {
     if (isSupabaseEnabled) {
-      return await OptimizedSupabaseDiaryService.getStatistics()
+      const allDiaries = await diaryService.getDiaries(1000)
+      const stats = {
+        totalDiaries: allDiaries.length,
+        totalImages: 0,
+        totalVideos: 0,
+        moodStats: {} as Record<string, number>,
+        cityStats: {} as Record<string, number>,
+        monthlyStats: {} as Record<string, number>
+      }
+      
+      allDiaries.forEach(diary => {
+        if (diary.images) stats.totalImages += diary.images.length
+        if (diary.videos) stats.totalVideos += diary.videos.length
+        if (diary.mood) stats.moodStats[diary.mood] = (stats.moodStats[diary.mood] || 0) + 1
+        if (diary.city) stats.cityStats[diary.city] = (stats.cityStats[diary.city] || 0) + 1
+        if (diary.date) {
+          const month = diary.date.substring(0, 7)
+          stats.monthlyStats[month] = (stats.monthlyStats[month] || 0) + 1
+        }
+      })
+      
+      return stats
     } else {
       // 本地存储统计
       const stats = {
@@ -184,7 +226,10 @@ export class OptimizedStorageAdapter {
    */
   static async deleteDiaries(dates: string[]): Promise<boolean> {
     if (isSupabaseEnabled) {
-      return await OptimizedSupabaseDiaryService.deleteDiaries(dates)
+      for (const date of dates) {
+        await diaryService.deleteDiary(date)
+      }
+      return true
     } else {
       dates.forEach(date => {
         localStorage.removeItem(`diary_${date}`)
@@ -198,7 +243,7 @@ export class OptimizedStorageAdapter {
    */
   static async getDiariesInRange(startDate: string, endDate: string): Promise<WeatherDiary[]> {
     if (isSupabaseEnabled) {
-      return await OptimizedSupabaseDiaryService.getDiariesInRange(startDate, endDate)
+      return await diaryService.getDiariesByDateRange(startDate, endDate)
     } else {
       const results: WeatherDiary[] = []
       const keys = Object.keys(localStorage).filter(key => key.startsWith('diary_'))

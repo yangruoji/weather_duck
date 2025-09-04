@@ -218,7 +218,7 @@ import { ref, watch, computed } from 'vue'
 import { WeatherData } from '../types/weather'
 import { DateUtils } from '../utils/dateUtils'
 import { SupabaseStorageService } from '../services/supabaseStorage'
-import { OptimizedSupabaseDiaryService } from '../services/optimizedSupabaseDiary'
+import { diaryService } from '../services/diaryService.js'
 // import type { WeatherDiary } from '../config/supabase'
 
 interface Props {
@@ -328,7 +328,7 @@ async function loadDiary() {
   }
   
   try {
-    const diary = await OptimizedSupabaseDiaryService.getDiary(props.weather.date)
+    const diary = await diaryService.getDiaryByDate(props.weather.date)
     if (diary) {
       hasExistingDiary.value = true
       cityLocation.value = diary.city || ''
@@ -535,7 +535,7 @@ async function handleSave() {
     // 保存日记到数据库
     saveProgressText.value = '正在保存日记...'
     
-    await OptimizedSupabaseDiaryService.saveDiary({
+    await diaryService.createDiary({
       date: props.weather.date,
       content: diaryText.value.trim(),
       weather_data: props.weather,
@@ -573,7 +573,10 @@ async function handleDelete() {
   if (!props.weather || !props.weather.date) return
   
   try {
-    await OptimizedSupabaseDiaryService.deleteDiary(props.weather.date)
+    const existingDiary = await diaryService.getDiaryByDate(props.weather.date)
+    if (existingDiary?.id) {
+      await diaryService.deleteDiary(existingDiary.id)
+    }
     emit('saved', props.weather.date, '')
     
     // 通知全局刷新

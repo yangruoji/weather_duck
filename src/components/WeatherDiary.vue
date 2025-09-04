@@ -76,8 +76,8 @@
 import { ref, watch, computed, onMounted } from 'vue'
 import { WeatherData } from '../types/weather'
 import { DateUtils } from '../utils/dateUtils'
-import { StorageAdapter } from '../services/storageAdapter'
-import { OptimizedSupabaseDiaryService } from '../services/optimizedSupabaseDiary'
+
+import { diaryService } from '../services/diaryService.js'
 
 interface Props {
   visible: boolean
@@ -182,7 +182,7 @@ async function loadDiary() {
     console.log('🚀 开始调用 OptimizedSupabaseDiaryService.getDiary，日期:', props.weather.date)
     
     // 强制调用服务
-    const diary = await OptimizedSupabaseDiaryService.getDiary(props.weather.date)
+    const diary = await diaryService.getDiaryByDate(props.weather.date)
     
     console.log('📦 服务返回的日记数据:', diary)
     
@@ -221,7 +221,7 @@ async function handleSave() {
   if (!diaryText.value.trim()) {
     // 如果内容为空，删除日记
     try {
-      await StorageAdapter.deleteDiary(props.weather.date)
+      await diaryService.deleteDiary(props.weather.date)
       savedContent.value = ''
       emit('saved', props.weather.date, '')
       // 通知全局刷新（卡片实时更新）
@@ -235,7 +235,7 @@ async function handleSave() {
 
   saving.value = true
   try {
-    await OptimizedSupabaseDiaryService.saveDiary({
+    await diaryService.createDiary({
       date: props.weather.date,
       content: diaryText.value.trim(),
       weather_data: props.weather,

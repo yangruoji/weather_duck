@@ -1,5 +1,5 @@
 import { isSupabaseEnabled, supabase } from '../config/supabase'
-import { SupabaseDiaryService } from './supabaseDiary'
+import { diaryService } from './diaryService.js'
 import { diaryDb } from './diaryDb'
 import type { WeatherDiary } from '../config/supabase'
 
@@ -14,7 +14,7 @@ export class StorageAdapter {
   static async saveDiary(data: Partial<WeatherDiary> & { date: string }): Promise<void> {
     if (isSupabaseEnabled && supabase) {
       try {
-        await SupabaseDiaryService.saveDiary(data as any)
+        await diaryService.createDiary(data as any)
         return
       } catch (error) {
         console.warn('Supabase保存日记失败，回退到本地存储:', error)
@@ -44,7 +44,7 @@ export class StorageAdapter {
   static async getDiary(date: string): Promise<WeatherDiary | null> {
     if (isSupabaseEnabled && supabase) {
       try {
-        return await SupabaseDiaryService.getDiary(date)
+        return await diaryService.getDiaryByDate(date)
       } catch (error) {
         console.warn('Supabase获取日记失败，回退到本地存储:', error)
       }
@@ -72,7 +72,7 @@ export class StorageAdapter {
   static async deleteDiary(date: string): Promise<void> {
     if (isSupabaseEnabled && supabase) {
       try {
-        await SupabaseDiaryService.deleteDiary(date)
+        await diaryService.deleteDiary(date)
         return
       } catch (error) {
         console.warn('Supabase删除日记失败，回退到本地存储:', error)
@@ -89,7 +89,7 @@ export class StorageAdapter {
   static async getAllDiaries(_limit: number = 50, _offset: number = 0): Promise<WeatherDiary[]> {
     if (isSupabaseEnabled && supabase) {
       try {
-        return await SupabaseDiaryService.getAllDiaries()
+        return await diaryService.getDiaries()
       } catch (error) {
         console.warn('Supabase获取所有日记失败，回退到本地存储:', error)
       }
@@ -114,7 +114,7 @@ export class StorageAdapter {
   static async getDiariesByDateRange(startDate: string, endDate: string): Promise<WeatherDiary[]> {
     if (isSupabaseEnabled && supabase) {
       try {
-        return await SupabaseDiaryService.getDiariesInRange(startDate, endDate)
+        return await diaryService.getDiariesByDateRange(startDate, endDate)
       } catch (error) {
         console.warn('Supabase获取日期范围日记失败，回退到本地存储:', error)
       }

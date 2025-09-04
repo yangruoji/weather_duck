@@ -139,7 +139,10 @@ import OfflineIndicator from './components/OfflineIndicator.vue'
 import PWAInstall from './components/PWAInstall.vue'
 import AppHeader from './components/AppHeader.vue'
 import { WeatherApiService } from './services/weatherApi'
-import { OptimizedSupabaseDiaryService } from './services/optimizedSupabaseDiary'
+
+import { weatherService } from './services/weatherService.js'
+import { diaryService } from './services/diaryService.js'
+import { globalDataManager } from './services/globalDataManager.js'
 import type { WeatherData } from './types/weather'
 import { GeocodingService } from './services/geocoding'
 import { initializeSupabase } from './utils/initSupabase'
@@ -271,26 +274,20 @@ async function fetchAll() {
   }
   loading.value = true
   try {
-    // 优化：使用批量请求而不是单个请求
-    const [weatherData] = await Promise.all([
-      WeatherApiService.getEnhancedWeatherData(
-        latitude.value,
-        longitude.value,
-        startDate.value,
-        endDate.value
-      )
-    ])
-    weatherList.value = weatherData
+    // 使用全局数据管理器，确保所有数据通过缓存加载
+    await globalDataManager.initialize(
+      startDate.value,
+      endDate.value,
+      latitude.value,
+      longitude.value
+    )
     
-    // 更新全局天气数据
-    ;(window as any).__weatherList = weatherList.value
-
-    // 批量预加载日记概览（异步，不阻塞UI）
-    await preloadDiariesOverview(startDate.value, endDate.value)
+    // 从全局数据管理器获取数据
+    weatherList.value = globalDataManager.getWeatherList()
 
     const today = new Date().toISOString().slice(0, 10)
     try {
-      const current = await WeatherApiService.getCurrentWeather(
+      const current = await weatherService.getCurrentWeather(
         latitude.value,
         longitude.value
       )
@@ -330,12 +327,14 @@ const diaryCache = ref<Map<string, any>>(new Map())
 ;(window as any).__diaryCache = diaryCache.value
 ;(window as any).__weatherList = weatherList.value
 
-// 批量预加载日记概览
+// 批量预加载日记概览（已被全局数据管理器替代，保留以防需要）
+/*
 async function preloadDiariesOverview(startDate: string, endDate: string) {
   try {
-    const diaries = await OptimizedSupabaseDiaryService.getDiariesInRange(startDate, endDate)
+    // 使用新的缓存服务批量获取日记
+    const diaries = await diaryService.getDiariesByDateRange(startDate, endDate)
     
-    // 将结果存入缓存
+    // 将结果存入全局缓存（兼容现有代码）
     diaries.forEach(diary => {
       if (diary.date) {
         diaryCache.value.set(diary.date, diary)
@@ -350,6 +349,7 @@ async function preloadDiariesOverview(startDate: string, endDate: string) {
     console.warn('预加载日记概览失败:', error)
   }
 }
+*/
 
 // 处理天气卡片点击 - 优化版本，减少数据库请求
 async function handleWeatherCardClick(weather: WeatherData) {
@@ -375,8 +375,11 @@ async function handleWeatherCardClick(weather: WeatherData) {
   
   // 后台异步检查日记内容
   try {
-    const diary = await OptimizedSupabaseDiaryService.getDiary(weather.date)
-    diaryCache.value.set(weather.date, diary)
+    // 优先使用缓存，避免重复请求
+    if (!diaryCache.value.has(weather.date)) {
+      const diary = await diaryService.getDiaryByDate(weather.date)
+      diaryCache.value.set(weather.date, diary)
+    }
   } catch (e) {
     console.warn('后台加载日记失败:', e)
   }
@@ -414,7 +417,7 @@ async function handleDiarySaved(date: string, content: string) {
   
   // 重新加载该日期的日记数据到缓存
   try {
-    const diary = await OptimizedSupabaseDiaryService.getDiary(date)
+    const diary = await diaryService.refreshDiaryByDate(date)
     if (diary) {
       diaryCache.value.set(date, diary)
     } else {

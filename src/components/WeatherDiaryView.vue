@@ -66,6 +66,10 @@
             <template #icon><t-icon name="chevron-left" /></template>
             上一天
           </t-button>
+          <t-button variant="outline" @click="refreshCurrentDay" :disabled="isRefreshing">
+            <template #icon><t-icon name="refresh" :class="{ 'fa-spin': isRefreshing }" /></template>
+            刷新
+          </t-button>
           <t-button variant="outline" @click="handleNextDay" :disabled="!hasNextDay">
             下一天
             <template #icon><t-icon name="chevron-right" /></template>
@@ -102,7 +106,8 @@
 import { ref, watch, computed } from 'vue'
 import { WeatherData } from '../types/weather'
 import { DateUtils } from '../utils/dateUtils'
-import { OptimizedSupabaseDiaryService } from '../services/optimizedSupabaseDiary'
+import { diaryService } from '../services/diaryService.js'
+
 import type { WeatherDiary } from '../config/supabase'
 import WeatherSummary from './WeatherSummary.vue'
 
@@ -123,6 +128,7 @@ const emit = defineEmits<Emits>()
 const diaryData = ref<WeatherDiary | null>(null)
 const imagePreviewVisible = ref(false)
 const previewIndex = ref(0)
+const isRefreshing = ref(false)
 
 const date = computed(() => {
   if (!props.weather || !props.weather.date) return ''
@@ -161,15 +167,15 @@ watch(() => props.weather, async (newWeather) => {
   }
 }, { deep: true })
 
-// 从数据库加载日记
-async function loadDiary() {
+// 从缓存或数据库加载日记
+async function loadDiary(forceRefresh = false) {
   if (!props.weather || !props.weather.date) {
     diaryData.value = null
     return
   }
   
   try {
-    const diary = await OptimizedSupabaseDiaryService.getDiary(props.weather.date)
+    const diary = await diaryService.getDiaryByDate(props.weather.date, forceRefresh)
     diaryData.value = diary
   } catch (e) {
     console.warn('加载日记失败:', e)
@@ -218,6 +224,21 @@ function handleNextDay() {
   if (currentIndex >= 0 && currentIndex < globalWeatherList.value.length - 1) {
     const nextWeather = globalWeatherList.value[currentIndex + 1]
     emit('dateChange', nextWeather.date)
+  }
+}
+
+async function refreshCurrentDay() {
+  if (isRefreshing.value) return
+  
+  isRefreshing.value = true
+  try {
+    await loadDiary(true)
+    // 预加载相邻日期的数据
+    diaryService.preloadAdjacentDiaries(props.weather.date)
+  } catch (error) {
+    console.error('刷新数据失败:', error)
+  } finally {
+    isRefreshing.value = false
   }
 }
 
@@ -346,7 +367,23 @@ function handleVisibleChange(value: boolean) {
 .nav-buttons {
   display: flex;
   justify-content: space-between;
+  align-items: center;
   margin-bottom: 16px;
+  gap: 8px;
+}
+
+.nav-buttons .t-button {
+  flex: 1;
+  max-width: 120px;
+}
+
+.fa-spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
 .main-buttons {
