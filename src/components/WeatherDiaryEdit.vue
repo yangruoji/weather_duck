@@ -563,7 +563,8 @@ async function handleSave() {
     // 保存日记到数据库
     saveProgressText.value = '正在保存日记...'
     
-    await diaryService.createDiary({
+    // 准备日记数据
+    const diaryData = {
       date: props.weather.date,
       content: diaryText.value.trim(),
       weather_data: props.weather,
@@ -571,7 +572,20 @@ async function handleSave() {
       videos: videoUrls,
       mood: selectedMood.value,
       city: cityLocation.value.trim()
-    })
+    }
+    
+    // 如果内容为空，删除日记
+    if (!diaryData.content && !diaryData.images.length && !diaryData.videos.length && !diaryData.mood && !diaryData.city) {
+      const existingDiary = await diaryService.getDiaryByDate(props.weather.date, true)
+      if (existingDiary?.id) {
+        await diaryService.deleteDiary(existingDiary.id)
+        saveProgressText.value = '日记已删除'
+      }
+    } else {
+      // 保存或更新日记
+      await diaryService.createDiary(diaryData)
+      saveProgressText.value = '保存完成！'
+    }
     
     completedTasks++
     totalProgress.value = 100
@@ -579,7 +593,18 @@ async function handleSave() {
     
     emit('saved', props.weather.date, diaryText.value.trim())
     
-    // 通知全局刷新
+    // 立即刷新全局数据管理器中的缓存
+    const globalManager = (window as any).__globalDataManager
+    if (globalManager) {
+      try {
+        await globalManager.refreshDate(props.weather.date)
+        console.log('✅ 全局缓存已刷新')
+      } catch (error) {
+        console.warn('刷新全局缓存失败:', error)
+      }
+    }
+    
+    // 通知全局刷新（兼容性）
     window.dispatchEvent(new CustomEvent('diary:updated', { 
       detail: { date: props.weather.date, action: 'save' } 
     }))
@@ -620,7 +645,18 @@ async function handleDelete() {
         }
         emit('saved', props.weather.date, '')
         
-        // 通知全局刷新
+        // 立即刷新全局数据管理器中的缓存
+        const globalManager = (window as any).__globalDataManager
+        if (globalManager) {
+          try {
+            await globalManager.refreshDate(props.weather.date)
+            console.log('✅ 全局缓存已刷新（删除）')
+          } catch (error) {
+            console.warn('刷新全局缓存失败:', error)
+          }
+        }
+        
+        // 通知全局刷新（兼容性）
         window.dispatchEvent(new CustomEvent('diary:updated', { 
           detail: { date: props.weather.date, action: 'delete' } 
         }))

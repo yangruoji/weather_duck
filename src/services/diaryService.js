@@ -100,9 +100,9 @@ class DiaryService {
         .from('weather_diaries')
         .select('id,date,content,mood,city,weather_data,images,video,created_at,updated_at')
         .eq('date', date)
-        .single()
+        .maybeSingle()
 
-      if (error && error.code !== 'PGRST116') { // PGRST116 是没有找到记录的错误
+      if (error) {
         throw error
       }
 
@@ -122,19 +122,40 @@ class DiaryService {
 
   async createDiary(diaryData) {
     try {
-      const { data, error } = await supabase
-        .from('weather_diaries')
-        .insert([diaryData])
-        .select()
-        .single()
-
-      if (error) throw error
+      // 先检查是否已存在该日期的日记
+      const existingDiary = await this.getDiaryByDate(diaryData.date, true)
+      
+      let data
+      if (existingDiary) {
+        // 如果存在，则更新
+        console.log(`日记已存在，更新日期: ${diaryData.date}`)
+        const { data: updateData, error } = await supabase
+          .from('weather_diaries')
+          .update(diaryData)
+          .eq('id', existingDiary.id)
+          .select()
+          .single()
+        
+        if (error) throw error
+        data = updateData
+      } else {
+        // 如果不存在，则创建
+        console.log(`创建新日记，日期: ${diaryData.date}`)
+        const { data: insertData, error } = await supabase
+          .from('weather_diaries')
+          .insert([diaryData])
+          .select()
+          .single()
+        
+        if (error) throw error
+        data = insertData
+      }
 
       // 更新缓存
       this.updateCacheAfterModification(data)
       return data
     } catch (error) {
-      console.error('创建日记失败:', error)
+      console.error('保存日记失败:', error)
       throw error
     }
   }

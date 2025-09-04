@@ -282,8 +282,9 @@ async function fetchAll() {
       longitude.value
     )
     
-    // 从全局数据管理器获取数据
-    weatherList.value = globalDataManager.getWeatherList()
+    // 从全局数据管理器获取数据并按日期倒序排列
+    const rawWeatherList = globalDataManager.getWeatherList()
+    weatherList.value = [...rawWeatherList].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
 
     const today = new Date().toISOString().slice(0, 10)
     try {
@@ -351,37 +352,47 @@ async function preloadDiariesOverview(startDate: string, endDate: string) {
 }
 */
 
-// 处理天气卡片点击 - 优化版本，减少数据库请求
+// 处理天气卡片点击 - 修复重复请求和显示逻辑
 async function handleWeatherCardClick(weather: WeatherData) {
+  console.log('🎯 卡片点击:', weather.date)
+  
   // 先设置选中的天气数据
   selectedWeather.value = weather
   
-  // 等待一个微任务，确保 selectedWeather 已经传递给子组件
-  await new Promise(resolve => setTimeout(resolve, 0))
+  // 检查缓存，决定显示哪个对话框
+  let diary = null
   
-  // 先检查缓存
+  // 优先从缓存获取
   if (diaryCache.value.has(weather.date)) {
-    const cachedDiary = diaryCache.value.get(weather.date)
-    if (cachedDiary && (cachedDiary.content?.trim() || cachedDiary.images?.length || cachedDiary.video || cachedDiary.mood)) {
-      diaryViewVisible.value = true
-    } else {
-      diaryEditVisible.value = true
+    diary = diaryCache.value.get(weather.date)
+    console.log('📦 从缓存获取日记:', diary)
+  } else {
+    // 缓存中没有，从数据库加载
+    console.log('🔍 缓存中没有，从数据库加载日记')
+    try {
+      diary = await diaryService.getDiaryByDate(weather.date)
+      diaryCache.value.set(weather.date, diary)
+      console.log('📦 从数据库获取日记:', diary)
+    } catch (e) {
+      console.warn('加载日记失败:', e)
+      diary = null
     }
-    return
   }
   
-  // 如果缓存中没有，则异步加载但不阻塞UI
-  diaryEditVisible.value = true // 默认进入编辑界面，提供更好的用户体验
+  // 根据日记内容决定显示查看还是编辑页面
+  const hasContent = diary && (
+    diary.content?.trim() || 
+    diary.images?.length || 
+    diary.video || 
+    diary.mood
+  )
   
-  // 后台异步检查日记内容
-  try {
-    // 优先使用缓存，避免重复请求
-    if (!diaryCache.value.has(weather.date)) {
-      const diary = await diaryService.getDiaryByDate(weather.date)
-      diaryCache.value.set(weather.date, diary)
-    }
-  } catch (e) {
-    console.warn('后台加载日记失败:', e)
+  if (hasContent) {
+    console.log('✅ 有日记内容，显示查看页面')
+    diaryViewVisible.value = true
+  } else {
+    console.log('📝 无日记内容，显示编辑页面')
+    diaryEditVisible.value = true
   }
 }
 
@@ -415,8 +426,11 @@ function handleEditDateChange(date: string) {
 async function handleDiarySaved(date: string, content: string) {
   console.log(`日记已保存: ${date}`, content ? '有内容' : '已删除')
   
-  // 重新加载该日期的日记数据到缓存
+  // 使用全局数据管理器刷新该日期的数据
   try {
+    await globalDataManager.refreshDate(date)
+    
+    // 同时更新本地缓存（兼容性）
     const diary = await diaryService.refreshDiaryByDate(date)
     if (diary) {
       diaryCache.value.set(date, diary)
@@ -424,10 +438,7 @@ async function handleDiarySaved(date: string, content: string) {
       diaryCache.value.delete(date)
     }
     
-    // 通知所有WeatherCard更新
-    window.dispatchEvent(new CustomEvent('diary:updated', { 
-      detail: { date, diary } 
-    }))
+    console.log(`✅ 日记缓存已更新: ${date}`)
   } catch (error) {
     console.warn('更新缓存失败:', error)
   }

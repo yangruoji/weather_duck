@@ -115,24 +115,13 @@ const date = computed(() => {
 // 监听对话框打开，加载已有日记
 watch(() => props.visible, async (newVisible, oldVisible) => {
   console.log('🔍 visible 变化:', oldVisible, '->', newVisible, 'weather.date:', props.weather?.date)
-  console.log('🔍 完整 weather 对象:', props.weather)
   
-  if (newVisible) {
-    console.log('🚀 对话框打开，立即开始加载日记')
+  if (newVisible && props.weather?.date) {
+    console.log('🚀 对话框打开，开始加载日记')
     isLoading.value = true
-    
-    // 强制等待一个微任务，确保组件完全渲染
-    await new Promise(resolve => setTimeout(resolve, 0))
-    
-    if (props.weather?.date) {
-      console.log('🔍 调用 loadDiary，日期:', props.weather.date)
-      await loadDiary()
-    } else {
-      console.log('❌ weather.date 不存在，无法加载日记')
-    }
-    
+    await loadDiary()
     isLoading.value = false
-  } else {
+  } else if (!newVisible) {
     console.log('对话框关闭，清空数据')
     diaryText.value = ''
     imageData.value = ''
@@ -140,7 +129,7 @@ watch(() => props.visible, async (newVisible, oldVisible) => {
     imageDirty.value = false
     isLoading.value = false
   }
-}, { immediate: true })
+}, { immediate: false }) // 改为 false，避免初始化时重复调用
 
 // 组件挂载时，如果对话框已经可见，立即加载数据
 onMounted(async () => {
@@ -164,27 +153,32 @@ watch(() => props.weather?.date, async (newDate, oldDate) => {
 
 // 从数据库加载日记
 async function loadDiary() {
-  console.log('🔍 loadDiary 被调用')
-  console.log('🔍 props.weather:', props.weather)
-  console.log('🔍 props.weather?.date:', props.weather?.date)
+  console.log('🔍 loadDiary 被调用，日期:', props.weather?.date)
   
   if (!props.weather || !props.weather.date) {
     console.log('❌ 没有天气数据或日期，清空状态')
-    savedContent.value = ''
-    diaryText.value = ''
-    imageData.value = ''
-    imageList.value = []
-    imageDirty.value = false
+    clearDiaryState()
     return
   }
   
   try {
-    console.log('🚀 开始调用 OptimizedSupabaseDiaryService.getDiary，日期:', props.weather.date)
+    // 优先从全局缓存获取，避免重复请求
+    const globalCache = (window as any).__diaryCache
+    let diary = null
     
-    // 强制调用服务
-    const diary = await diaryService.getDiaryByDate(props.weather.date)
-    
-    console.log('📦 服务返回的日记数据:', diary)
+    if (globalCache && globalCache.has(props.weather.date)) {
+      diary = globalCache.get(props.weather.date)
+      console.log('📦 从全局缓存获取日记:', diary)
+    } else {
+      console.log('🚀 从数据库加载日记，日期:', props.weather.date)
+      diary = await diaryService.getDiaryByDate(props.weather.date)
+      
+      // 更新全局缓存
+      if (globalCache) {
+        globalCache.set(props.weather.date, diary)
+      }
+      console.log('📦 从数据库获取日记:', diary)
+    }
     
     if (diary) {
       console.log('✅ 找到日记，设置内容')
@@ -195,20 +189,21 @@ async function loadDiary() {
       imageDirty.value = false
     } else {
       console.log('📝 没有找到日记，设置为空状态')
-      savedContent.value = ''
-      diaryText.value = ''
-      imageData.value = ''
-      imageList.value = []
-      imageDirty.value = false
+      clearDiaryState()
     }
   } catch (e) {
     console.error('💥 加载日记失败:', e)
-    savedContent.value = ''
-    diaryText.value = ''
-    imageData.value = ''
-    imageList.value = []
-    imageDirty.value = false
+    clearDiaryState()
   }
+}
+
+// 清空日记状态的辅助函数
+function clearDiaryState() {
+  savedContent.value = ''
+  diaryText.value = ''
+  imageData.value = ''
+  imageList.value = []
+  imageDirty.value = false
 }
 
 // 保存日记到数据库
@@ -218,36 +213,57 @@ async function handleSave() {
     return
   }
   
-  if (!diaryText.value.trim()) {
-    // 如果内容为空，删除日记
-    try {
-      await diaryService.deleteDiary(props.weather.date)
-      savedContent.value = ''
-      emit('saved', props.weather.date, '')
-      // 通知全局刷新（卡片实时更新）
-      window.dispatchEvent(new CustomEvent('diary:updated', { detail: { date: props.weather.date, action: 'save' } }))
-      handleClose()
-    } catch (e) {
-      console.error('删除日记失败:', e)
-    }
-    return
-  }
-
   saving.value = true
   try {
-    await diaryService.createDiary({
-      date: props.weather.date,
-      content: diaryText.value.trim(),
-      weather_data: props.weather,
-      images: imageDirty.value ? imageList.value : [],
-      mood: '',
-      city: '',
-      videos: []
-    })
-    savedContent.value = diaryText.value.trim()
-    emit('saved', props.weather.date, diaryText.value.trim())
-    // 通知全局刷新（卡片实时更新）
-    window.dispatchEvent(new CustomEvent('diary:updated', { detail: { date: props.weather.date, action: 'delete' } }))
+    if (!diaryText.value.trim() && !imageList.value.length) {
+      // 如果内容为空，删除日记
+      const existingDiary = await diaryService.getDiaryByDate(props.weather.date, true)
+      if (existingDiary?.id) {
+        await diaryService.deleteDiary(existingDiary.id)
+      }
+      savedContent.value = ''
+      emit('saved', props.weather.date, '')
+      // 立即刷新全局数据管理器中的缓存
+      const globalManager = (window as any).__globalDataManager
+      if (globalManager) {
+        try {
+          await globalManager.refreshDate(props.weather.date)
+          console.log('✅ 全局缓存已刷新（删除）')
+        } catch (error) {
+          console.warn('刷新全局缓存失败:', error)
+        }
+      }
+      
+      // 通知全局刷新（卡片实时更新）
+      window.dispatchEvent(new CustomEvent('diary:updated', { detail: { date: props.weather.date, action: 'delete' } }))
+    } else {
+      // 保存或更新日记
+      await diaryService.createDiary({
+        date: props.weather.date,
+        content: diaryText.value.trim(),
+        weather_data: props.weather,
+        images: imageDirty.value ? imageList.value : [],
+        mood: '',
+        city: '',
+        videos: []
+      })
+      savedContent.value = diaryText.value.trim()
+      emit('saved', props.weather.date, diaryText.value.trim())
+      
+      // 立即刷新全局数据管理器中的缓存
+      const globalManager = (window as any).__globalDataManager
+      if (globalManager) {
+        try {
+          await globalManager.refreshDate(props.weather.date)
+          console.log('✅ 全局缓存已刷新')
+        } catch (error) {
+          console.warn('刷新全局缓存失败:', error)
+        }
+      }
+      
+      // 通知全局刷新（卡片实时更新）
+      window.dispatchEvent(new CustomEvent('diary:updated', { detail: { date: props.weather.date, action: 'save' } }))
+    }
     handleClose()
   } catch (e) {
     console.error('保存日记失败:', e)

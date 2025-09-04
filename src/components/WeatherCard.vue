@@ -112,22 +112,18 @@ async function loadDiary() {
     const globalManager = (window as any).__globalDataManager
     if (globalManager) {
       const diary = globalManager.getDiary(props.weather.date)
-      if (diary) {
-        hasDiary.value = true
-        diaryData.value = diary
-        return
-      }
+      hasDiary.value = !!diary
+      diaryData.value = diary
+      return
     }
 
     // 备用：从全局缓存获取
     const globalCache = (window as any).__diaryCache
     if (globalCache && globalCache.has(props.weather.date)) {
       const diary = globalCache.get(props.weather.date)
-      if (diary) {
-        hasDiary.value = true
-        diaryData.value = diary
-        return
-      }
+      hasDiary.value = !!diary
+      diaryData.value = diary
+      return
     }
 
     // 最后才发起请求（理论上不应该到这里）

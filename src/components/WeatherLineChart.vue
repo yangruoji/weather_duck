@@ -67,12 +67,15 @@ const containerHeight = computed(() => {
 })
 
 function getOption(list: WeatherData[]): EChartsOption {
-  const dates = list.map((d) => d.date)
-  const maxArr = list.map((d) => d.temperature.max)
-  const minArr = list.map((d) => d.temperature.min)
-  const curArr = list.map((d) => d.temperature.current)
-  const precipArr = list.map((d) => d.precipitation)
-  const icons = list.map((d) => d.icon)
+  // 确保数据按日期顺序排列（时间轴从左到右递增）
+  const sortedList = [...list].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+  
+  const dates = sortedList.map((d) => d.date)
+  const maxArr = sortedList.map((d) => d.temperature.max)
+  const minArr = sortedList.map((d) => d.temperature.min)
+  const curArr = sortedList.map((d) => d.temperature.current)
+  const precipArr = sortedList.map((d) => d.precipitation)
+  const icons = sortedList.map((d) => d.icon)
 
   return {
     grid: {
@@ -98,7 +101,7 @@ function getOption(list: WeatherData[]): EChartsOption {
       formatter: function(params: any) {
         if (!Array.isArray(params)) return ''
         const dataIndex = params[0].dataIndex
-        const weather = list[dataIndex]
+        const weather = sortedList[dataIndex]
         const date = dates[dataIndex]
         const mood = diaryMoods.value[date]
         
@@ -430,9 +433,9 @@ function getOption(list: WeatherData[]): EChartsOption {
     // 天气图标和心情图标 - 精确对齐到曲线数据点
     graphic: [
       // 天气图标 - 与每个数据点精确对齐
-      ...list.map((weather, index) => {
+      ...sortedList.map((weather, index) => {
         // 计算图表区域内的精确位置
-        const totalPoints = list.length
+        const totalPoints = sortedList.length
         const gridLeft = 60 // 与grid.left保持一致
         const gridRight = 60 // 与grid.right保持一致
         const chartWidth = 100 - ((gridLeft + gridRight) / 10) // 转换为百分比
@@ -479,7 +482,7 @@ function getOption(list: WeatherData[]): EChartsOption {
         }
       }),
       // 心情图标 - 仅在有心情数据时显示，与对应的天气数据点对齐
-      ...list.map((weather, index) => {
+      ...sortedList.map((weather, index) => {
         const mood = diaryMoods.value[weather.date]
         if (!mood) {
           // console.log(`日期 ${weather.date} 没有心情数据`)
@@ -495,7 +498,7 @@ function getOption(list: WeatherData[]): EChartsOption {
         // console.log(`为日期 ${weather.date} 生成心情图标: ${moodEmoji} (${mood})`)
         
         // 使用与天气图标相同的位置计算逻辑
-        const totalPoints = list.length
+        const totalPoints = sortedList.length
         const gridLeft = 60
         const gridRight = 60
         const chartWidth = 100 - ((gridLeft + gridRight) / 10)
